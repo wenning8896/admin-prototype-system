@@ -6,9 +6,10 @@ export type AgreementStage =
   | "待分销商签署"
   | "待服务商签署"
   | "已签署完成"
+  | "已作废"
   | "审批驳回";
 
-export type ApprovalDecision = "发起申请" | "审批通过" | "审批驳回";
+export type ApprovalDecision = "发起申请" | "审批通过" | "审批驳回" | "协议作废";
 
 export type ApprovalHistoryItem = {
   id: string;
@@ -52,6 +53,11 @@ export type PurchaseAgreementRecord = {
   serviceProviderSubmittedAt?: string;
   distributorSignedAt?: string;
   serviceProviderSignedAt?: string;
+  invalidatedAt?: string;
+  invalidatedBy?: string;
+  invalidatedByAccount?: string;
+  invalidateReason?: string;
+  invalidateSource?: string;
   approvalHistory: ApprovalHistoryItem[];
   serviceProviderSupplement?: {
     partyBName: string;
@@ -78,11 +84,13 @@ type DistributorAgreementOverview = {
     id: string;
     name: string;
     owner: string;
-    status: "已关联" | "签约中";
+    status: "已关联" | "签约中" | "已作废";
   }>;
 };
 
 const STORAGE_KEY = "csl-purchase-agreement-flow";
+
+const INVALIDATABLE_STAGES: AgreementStage[] = ["待服务商补充", "待分销商签署"];
 
 export const serviceProviderOptions: ServiceProviderOption[] = [
   { id: "sp-001", name: "华东履约服务商", owner: "周奕", region: "华东大区" },
@@ -247,6 +255,10 @@ function createAgreementNo(index: number) {
   return `GXY-${dayjs().format("YYYYMM")}-${String(index).padStart(3, "0")}`;
 }
 
+export function canInvalidatePurchaseAgreement(status: AgreementStage) {
+  return INVALIDATABLE_STAGES.includes(status);
+}
+
 export async function listPurchaseAgreements() {
   await new Promise((resolve) => window.setTimeout(resolve, 220));
   return readAllAgreements().sort((a, b) => dayjs(b.createdAt).valueOf() - dayjs(a.createdAt).valueOf());
@@ -273,7 +285,7 @@ export function getDistributorAgreementOverview() {
 
     overviewMap[item.distributorId].latestAgreementStatus = item.status;
 
-    if (item.status !== "已签署完成" && item.status !== "审批驳回") {
+    if (item.status !== "已签署完成" && item.status !== "审批驳回" && item.status !== "已作废") {
       overviewMap[item.distributorId].hasActiveAgreement = true;
     }
 
@@ -281,7 +293,7 @@ export function getDistributorAgreementOverview() {
       id: item.serviceProviderId,
       name: item.serviceProviderName,
       owner: item.serviceProviderOwner,
-      status: item.status === "已签署完成" ? "已关联" : "签约中",
+      status: item.status === "已签署完成" ? "已关联" : item.status === "已作废" ? "已作废" : "签约中",
     });
   }
 
@@ -298,9 +310,15 @@ export async function initiatePurchaseAgreement(payload: {
 }) {
   const stored = readStoredAgreements();
   const all = readAllAgreements();
-  const existed = all.find((item) => item.distributorId === payload.distributorId);
+  const latestAgreement = all
+    .filter((item) => item.distributorId === payload.distributorId)
+    .sort((a, b) => dayjs(b.createdAt).valueOf() - dayjs(a.createdAt).valueOf())[0];
 
-  if (existed) {
+  if (
+    latestAgreement &&
+    latestAgreement.status !== "已作废" &&
+    latestAgreement.status !== "审批驳回"
+  ) {
     throw new Error("当前分销商已存在签约记录，不能重复发起协议。");
   }
 
@@ -381,6 +399,59 @@ export async function reviewPurchaseAgreement(payload: {
   persistStoredAgreements(next);
 }
 
+export async function invalidatePurchaseAgreement(payload: {
+  id: string;
+  reason: string;
+  operatorAccount: string;
+  operatorName: string;
+  source: string;
+}) {
+  const stored = readStoredAgreements();
+  const target = stored.find((item) => item.id === payload.id);
+  if (!target) {
+    throw new Error("未找到当前协议记录。");
+  }
+
+  const reason = payload.reason.trim();
+  if (!reason) {
+    throw new Error("请输入作废原因。");
+  }
+
+  if (!canInvalidatePurchaseAgreement(target.status)) {
+    throw new Error("当前状态不允许作废平台协议。");
+  }
+
+  const actedAt = dayjs().format("YYYY-MM-DD HH:mm");
+  const next = stored.map((item) =>
+    item.id === payload.id
+      ? {
+          ...item,
+          status: "已作废" as AgreementStage,
+          currentApprovalNode: "平台协议已作废",
+          invalidatedAt: actedAt,
+          invalidatedBy: payload.operatorName,
+          invalidatedByAccount: payload.operatorAccount,
+          invalidateReason: reason,
+          invalidateSource: payload.source,
+          approvalHistory: [
+            ...item.approvalHistory,
+            {
+              id: `hist-${Date.now()}`,
+              roleLabel: "管理员",
+              account: payload.operatorAccount,
+              operatorName: payload.operatorName,
+              actedAt,
+              decision: "协议作废" as ApprovalDecision,
+              remark: reason,
+            },
+          ],
+        }
+      : item,
+  );
+
+  persistStoredAgreements(next);
+}
+
 export async function submitServiceProviderAgreement(
   id: string,
   payload: {
@@ -392,6 +463,14 @@ export async function submitServiceProviderAgreement(
   },
 ) {
   const stored = readStoredAgreements();
+  const target = stored.find((item) => item.id === id);
+  if (!target) {
+    throw new Error("未找到当前协议记录。");
+  }
+  if (target.status !== "待服务商补充") {
+    throw new Error("当前协议状态不可补充。");
+  }
+
   const next = stored.map((item) =>
     item.id === id
       ? {
@@ -418,6 +497,14 @@ export async function signDistributorAgreement(
   },
 ) {
   const stored = readStoredAgreements();
+  const target = stored.find((item) => item.id === id);
+  if (!target) {
+    throw new Error("未找到当前协议记录。");
+  }
+  if (target.status !== "待分销商签署") {
+    throw new Error("当前协议状态不可发起签署。");
+  }
+
   const next = stored.map((item) =>
     item.id === id
       ? {
@@ -434,6 +521,14 @@ export async function signDistributorAgreement(
 
 export async function signServiceProviderAgreement(id: string) {
   const stored = readStoredAgreements();
+  const target = stored.find((item) => item.id === id);
+  if (!target) {
+    throw new Error("未找到当前协议记录。");
+  }
+  if (target.status !== "待服务商签署") {
+    throw new Error("当前协议状态不可签署。");
+  }
+
   const next = stored.map((item) =>
     item.id === id
       ? {

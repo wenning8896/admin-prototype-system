@@ -48,6 +48,7 @@ const agreementStatusColorMap: Record<string, string> = {
   待分销商签署: "purple",
   待服务商签署: "gold",
   已签署完成: "success",
+  已作废: "default",
   审批驳回: "error",
 };
 
@@ -102,12 +103,13 @@ export function EDistributorListPage() {
   }
 
   async function handleCreateAgreement(record: EDistributorRecord) {
+    const currentAgreementStatus = agreementOverview[record.id]?.latestAgreementStatus ?? "未发起";
     if (record.certificationStatus !== "已认证") {
-      void message.warning("只有已认证的分销商才可以发起协议。");
+      void message.warning("只有已认证的分销商才可以发起签约。");
       return;
     }
-    if (agreementOverview[record.id]?.hasAgreement) {
-      void message.info("该分销商已有签约记录，当前不能重复发起协议。");
+    if (agreementOverview[record.id]?.hasActiveAgreement || currentAgreementStatus === "已签署完成") {
+      void message.info("该分销商已有签约记录，当前不能重复发起签约。");
       return;
     }
     agreementForm.resetFields();
@@ -130,11 +132,11 @@ export function EDistributorListPage() {
         initiatorAccount: user?.account ?? "admin",
         initiatorName: user?.name ?? "管理员",
       });
-      void message.success("已发起购销协议，并进入签约审批列表。");
+      void message.success("已发起签约，并进入签约审批列表。");
       setLaunchTarget(null);
       await loadData(form.getFieldsValue());
     } catch (error) {
-      void message.error(error instanceof Error ? error.message : "发起协议失败");
+      void message.error(error instanceof Error ? error.message : "发起签约失败");
     } finally {
       setLaunching(false);
     }
@@ -212,10 +214,11 @@ export function EDistributorListPage() {
         const agreementStatus = agreementOverview[record.id]?.latestAgreementStatus ?? "未发起";
 
         return (
-          <Space size={12} wrap={false} className="e-distributor-page__actions">
-            {record.certificationStatus === "已认证" && agreementStatus === "未发起" ? (
+        <Space size={12} wrap={false} className="e-distributor-page__actions">
+            {record.certificationStatus === "已认证" &&
+            (agreementStatus === "未发起" || agreementStatus === "已作废") ? (
               <Button type="link" onClick={() => void handleCreateAgreement(record)}>
-                发起协议
+                {agreementStatus === "已作废" ? "重新发起签约" : "发起签约"}
               </Button>
             ) : null}
             {agreementStatus === "已签署完成" ? (
@@ -223,7 +226,10 @@ export function EDistributorListPage() {
                 查看已关联服务商
               </Button>
             ) : null}
-            {(record.certificationStatus !== "已认证" || (agreementStatus !== "未发起" && agreementStatus !== "已签署完成")) ? (
+            {(record.certificationStatus !== "已认证" ||
+              (agreementStatus !== "未发起" &&
+                agreementStatus !== "已签署完成" &&
+                agreementStatus !== "已作废")) ? (
               <Typography.Text type="secondary">-</Typography.Text>
             ) : null}
           </Space>
@@ -346,7 +352,17 @@ export function EDistributorListPage() {
                   <Space direction="vertical" size={4}>
                     <Typography.Text strong>{provider.name}</Typography.Text>
                     <Typography.Text type="secondary">负责人：{provider.owner}</Typography.Text>
-                    <Tag color={provider.status === "已关联" ? "success" : "warning"}>{provider.status}</Tag>
+                    <Tag
+                      color={
+                        provider.status === "已关联"
+                          ? "success"
+                          : provider.status === "已作废"
+                            ? "default"
+                            : "warning"
+                      }
+                    >
+                      {provider.status}
+                    </Tag>
                   </Space>
                 </Card>
               ))}
@@ -360,7 +376,7 @@ export function EDistributorListPage() {
       </Drawer>
 
       <Modal
-        title={launchTarget ? `为 ${launchTarget.distributorName} 发起购销协议` : "发起购销协议"}
+        title={launchTarget ? `为 ${launchTarget.distributorName} 发起签约` : "发起签约"}
         open={Boolean(launchTarget)}
         confirmLoading={launching}
         onOk={() => void handleLaunchSubmit()}
@@ -372,7 +388,7 @@ export function EDistributorListPage() {
             label="选择服务商"
             name="serviceProviderId"
             rules={[{ required: true, message: "请选择一个服务商" }]}
-            extra="单次只能选择一个服务商发起购销协议。"
+            extra="单次只能选择一个服务商发起签约。"
           >
             <Select
               placeholder="请选择服务商"

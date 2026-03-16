@@ -24,6 +24,8 @@ import { CustomerDistributorApprovalDetailPage } from "../features/order/admin/p
 import { CustomerDistributorApprovalPage } from "../features/order/admin/pages/CustomerDistributorApprovalPage";
 import { ContractSigningApprovalDetailPage } from "../features/order/admin/pages/ContractSigningApprovalDetailPage";
 import { ContractSigningApprovalPage } from "../features/order/admin/pages/ContractSigningApprovalPage";
+import { ContractSigningListDetailPage } from "../features/order/admin/pages/ContractSigningListDetailPage";
+import { ContractSigningListPage } from "../features/order/admin/pages/ContractSigningListPage";
 import { CustomerDistributorDetailPage } from "../features/order/admin/pages/CustomerDistributorDetailPage";
 import { CustomerDistributorListPage } from "../features/order/admin/pages/CustomerDistributorListPage";
 import { DealerDistributorSupplyRelationApprovalPage } from "../features/order/admin/pages/DealerDistributorSupplyRelationApprovalPage";
@@ -77,6 +79,7 @@ const pageRegistry: Record<string, ComponentType> = {
   "admin.order.dealer-distributor-supply-relation-approval": DealerDistributorSupplyRelationApprovalPage,
   "admin.order.interception-release-application": InterceptionReleaseApplicationPage,
   "admin.order.e-distributor-list": EDistributorListPage,
+  "admin.order.contract-signing-list": ContractSigningListPage,
   "admin.order.contract-signing-approval": ContractSigningApprovalPage,
   "admin.order.distributor-inventory-list": DistributorInventoryListPage,
   "admin.order.service-provider-list": ServiceProviderListPage,
@@ -111,6 +114,7 @@ const pageDetailRegistry: Record<string, ComponentType> = {
   "admin.order.distributor-list": CustomerDistributorDetailPage,
   "admin.order.distributor-approval": CustomerDistributorApprovalDetailPage,
   "admin.order.contract-signing-approval": ContractSigningApprovalDetailPage,
+  "admin.order.contract-signing-list": ContractSigningListDetailPage,
   "admin.order.interception-release-application": InterceptionReleaseApplicationDetailPage,
   "admin.order.platform-order-approval": PlatformOrderApprovalDetailPage,
   "admin.order.platform-order-list": PlatformOrderDetailPage,
