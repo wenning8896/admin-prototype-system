@@ -15,6 +15,7 @@ const stageColorMap: Record<AgreementStage, string> = {
   待分销商签署: "purple",
   待服务商签署: "gold",
   已签署完成: "success",
+  已作废: "default",
   审批驳回: "error",
 };
 
@@ -185,6 +186,20 @@ export function DistributorContractDetailPage() {
           <Typography.Text type="secondary">该模块由服务商填写，当前暂未补充。</Typography.Text>
         )}
       </Card>
+
+      {record?.status === "已作废" ? (
+        <Card className="page-card" title="作废信息">
+          <Descriptions column={2} className="agreement-detail__descriptions">
+            <Descriptions.Item label="作废时间">{record.invalidatedAt ?? "-"}</Descriptions.Item>
+            <Descriptions.Item label="作废人">
+              {record.invalidatedBy ? `${record.invalidatedBy}（${record.invalidatedByAccount ?? "-"}）` : "-"}
+            </Descriptions.Item>
+            <Descriptions.Item label="作废原因" span={2}>
+              {record.invalidateReason ?? "-"}
+            </Descriptions.Item>
+          </Descriptions>
+        </Card>
+      ) : null}
     </Space>
   );
 }

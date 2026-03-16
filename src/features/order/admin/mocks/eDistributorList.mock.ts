@@ -18,7 +18,7 @@ export type EDistributorRecord = {
     id: string;
     name: string;
     owner: string;
-    status: "已关联" | "待确认";
+    status: "已关联" | "待确认" | "已作废";
   }>;
 };
 
