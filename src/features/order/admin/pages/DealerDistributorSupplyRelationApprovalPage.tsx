@@ -1,9 +1,11 @@
 import { App, Button, Card, Form, Input, Segmented, Select, Space, Table, Tag, Timeline, Typography } from "antd";
+import type { TableRowSelection } from "antd/es/table/interface";
 import type { ColumnsType } from "antd/es/table";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type Key } from "react";
 import { useAuth } from "../../../../auth/useAuth";
 import type { DealerDistributorSupplyRelationRecord, DealerDistributorSupplyRelationStatus } from "../mocks/dealerDistributorSupplyRelation.mock";
 import {
+  batchReviewDealerDistributorSupplyRelations,
   listDealerDistributorSupplyRelations,
   reviewDealerDistributorSupplyRelation,
   type DealerDistributorSupplyRelationFilters,
@@ -20,13 +22,14 @@ const statusColorMap: Record<DealerDistributorSupplyRelationStatus, string> = {
 
 export function DealerDistributorSupplyRelationApprovalPage() {
   const [form] = Form.useForm<DealerDistributorSupplyRelationFilters>();
-  const [reviewForm] = Form.useForm<{ remark: string }>();
   const { message, modal } = App.useApp();
   const { user } = useAuth();
   const [tab, setTab] = useState<ReviewTab>("pending");
   const [loading, setLoading] = useState(true);
   const [submittingId, setSubmittingId] = useState<string>();
+  const [batchSubmitting, setBatchSubmitting] = useState(false);
   const [items, setItems] = useState<DealerDistributorSupplyRelationRecord[]>([]);
+  const [selectedRowKeys, setSelectedRowKeys] = useState<Key[]>([]);
 
   async function loadData(filters: DealerDistributorSupplyRelationFilters = {}, nextTab: ReviewTab = tab) {
     setLoading(true);
@@ -44,6 +47,12 @@ export function DealerDistributorSupplyRelationApprovalPage() {
         );
       });
       setItems(next);
+      if (nextTab !== "pending") {
+        setSelectedRowKeys([]);
+        return;
+      }
+
+      setSelectedRowKeys((current) => current.filter((key) => next.some((item) => item.id === key)));
     } finally {
       setLoading(false);
     }
@@ -54,6 +63,7 @@ export function DealerDistributorSupplyRelationApprovalPage() {
     void (async () => {
       const next = await listDealerDistributorSupplyRelations({ status: "待审批" });
       setItems(next);
+      setSelectedRowKeys([]);
       setLoading(false);
     })();
   }, []);
@@ -63,7 +73,6 @@ export function DealerDistributorSupplyRelationApprovalPage() {
       return;
     }
 
-    const values = await reviewForm.validateFields();
     modal.confirm({
       title: action === "approve" ? "确认审批通过？" : "确认审批驳回？",
       content: action === "approve" ? "通过后该经分供货关系将正式启用。" : "驳回后该关系将保持驳回状态，不会启用。",
@@ -75,11 +84,9 @@ export function DealerDistributorSupplyRelationApprovalPage() {
           await reviewDealerDistributorSupplyRelation({
             id: record.id,
             action,
-            remark: values.remark,
             reviewerAccount: user.account,
             reviewerName: user.name,
           });
-          reviewForm.resetFields();
           void message.success(action === "approve" ? "审批已通过。" : "审批已驳回。");
           await loadData(form.getFieldsValue(), tab);
         } finally {
@@ -88,6 +95,46 @@ export function DealerDistributorSupplyRelationApprovalPage() {
       },
     });
   }
+
+  function handleBatchReview(action: "approve" | "reject") {
+    if (!user || selectedRowKeys.length === 0) {
+      return;
+    }
+
+    const ids = selectedRowKeys.map(String);
+    modal.confirm({
+      title: action === "approve" ? "确认批量通过？" : "确认批量驳回？",
+      content:
+        action === "approve"
+          ? `已选 ${ids.length} 条关系，通过后将统一启用。`
+          : `已选 ${ids.length} 条关系，驳回后将统一更新为已驳回。`,
+      okText: action === "approve" ? "确认通过" : "确认驳回",
+      cancelText: "取消",
+      onOk: async () => {
+        setBatchSubmitting(true);
+        try {
+          await batchReviewDealerDistributorSupplyRelations({
+            ids,
+            action,
+            reviewerAccount: user.account,
+            reviewerName: user.name,
+          });
+          void message.success(action === "approve" ? "批量审批已通过。" : "批量审批已驳回。");
+          await loadData(form.getFieldsValue(), tab);
+        } finally {
+          setBatchSubmitting(false);
+        }
+      },
+    });
+  }
+
+  const rowSelection: TableRowSelection<DealerDistributorSupplyRelationRecord> | undefined =
+    tab === "pending"
+      ? {
+          selectedRowKeys,
+          onChange: (keys) => setSelectedRowKeys(keys),
+        }
+      : undefined;
 
   const columns: ColumnsType<DealerDistributorSupplyRelationRecord> = [
     { title: "业务单元", dataIndex: "businessUnit", width: 120, fixed: "left" },
@@ -189,19 +236,25 @@ export function DealerDistributorSupplyRelationApprovalPage() {
         </Form>
       </Card>
 
-      {tab === "pending" ? (
-        <Card className="page-card" title="审批备注">
-          <Form form={reviewForm} layout="vertical" initialValues={{ remark: "" }}>
-            <Form.Item name="remark" label="审批备注" rules={[{ required: true, message: "请输入审批备注" }]}>
-              <Input.TextArea rows={3} placeholder="请输入本次审批备注" />
-            </Form.Item>
-          </Form>
-        </Card>
-      ) : null}
-
       <Card className="page-card">
+        {tab === "pending" ? (
+          <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 16 }}>
+            <Space size={8}>
+              <Typography.Text type="secondary">
+                已选 {selectedRowKeys.length} 条
+              </Typography.Text>
+              <Button danger disabled={selectedRowKeys.length === 0} loading={batchSubmitting} onClick={() => handleBatchReview("reject")}>
+                批量驳回
+              </Button>
+              <Button type="primary" disabled={selectedRowKeys.length === 0} loading={batchSubmitting} onClick={() => handleBatchReview("approve")}>
+                批量通过
+              </Button>
+            </Space>
+          </div>
+        ) : null}
         <Table
           rowKey="id"
+          rowSelection={rowSelection}
           loading={loading}
           dataSource={items}
           columns={columns}
@@ -221,7 +274,6 @@ export function DealerDistributorSupplyRelationApprovalPage() {
                             </Typography.Text>
                             <Typography.Text type="secondary">{item.actedAt}</Typography.Text>
                             <Typography.Text>{item.decision}</Typography.Text>
-                            <Typography.Text type="secondary">审批备注：{item.remark || "-"}</Typography.Text>
                           </Space>
                         ),
                       }))}
