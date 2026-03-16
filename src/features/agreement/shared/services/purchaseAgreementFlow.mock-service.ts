@@ -27,6 +27,14 @@ export type ServiceProviderOption = {
   region: string;
 };
 
+export type AgreementClauseItem = {
+  id: string;
+  clauseTitle: string;
+  defaultRule: string;
+  editable: boolean;
+  description: string;
+};
+
 export type PurchaseAgreementRecord = {
   id: string;
   applicationNo: string;
@@ -50,9 +58,7 @@ export type PurchaseAgreementRecord = {
     partyBContact: string;
     partyBPhone: string;
     partyBAddress: string;
-    cooperationMode: string;
-    settlementRule: string;
-    clauseRemark: string;
+    clauseItems: AgreementClauseItem[];
   };
   distributorContract?: {
     partyAName: string;
@@ -128,9 +134,36 @@ const seedAgreements: PurchaseAgreementRecord[] = [
       partyBContact: "周奕",
       partyBPhone: "13800001234",
       partyBAddress: "上海市浦东新区锦绣路 188 号",
-      cooperationMode: "平台供货",
-      settlementRule: "月结 30 天",
-      clauseRemark: "首批合作门店 28 家，支持按月对账。",
+      clauseItems: [
+        {
+          id: "clause-1",
+          clauseTitle: "月度进货额月度指标",
+          defaultRule: "100%完成，月返利 1%",
+          editable: true,
+          description: "百分比需支持编辑",
+        },
+        {
+          id: "clause-2",
+          clauseTitle: "季度进货额季度指标",
+          defaultRule: "100%完成，季返利 1%",
+          editable: true,
+          description: "原描述为“季度进货额月度指标”，建议产品和业务统一口径",
+        },
+        {
+          id: "clause-3",
+          clauseTitle: "订单系统维护及数据准确度",
+          defaultRule: "无误，月返 1%",
+          editable: true,
+          description: "百分比需支持编辑",
+        },
+        {
+          id: "clause-4",
+          clauseTitle: "市场秩序管理规则",
+          defaultRule: "季度无投诉，季返 1%",
+          editable: true,
+          description: "百分比需支持编辑",
+        },
+      ],
     },
     distributorContract: {
       partyAName: "上海联享分销有限公司",
@@ -170,7 +203,40 @@ function persistStoredAgreements(records: PurchaseAgreementRecord[]) {
 }
 
 function readAllAgreements() {
-  return [...readStoredAgreements(), ...seedAgreements];
+  return [...readStoredAgreements(), ...seedAgreements].map((item) => {
+    if (!item.serviceProviderSupplement) {
+      return item;
+    }
+
+    const legacySupplement = item.serviceProviderSupplement as typeof item.serviceProviderSupplement & {
+      cooperationMode?: string;
+      settlementRule?: string;
+      clauseRemark?: string;
+    };
+
+    const clauseItems = item.serviceProviderSupplement.clauseItems ?? [
+      {
+        id: `${item.id}-clause-legacy`,
+        clauseTitle: "协议条款说明",
+        defaultRule: [legacySupplement.cooperationMode, legacySupplement.settlementRule]
+          .filter(Boolean)
+          .join(" / "),
+        editable: true,
+        description: legacySupplement.clauseRemark ?? "",
+      },
+    ];
+
+    return {
+      ...item,
+      serviceProviderSupplement: {
+        partyBName: item.serviceProviderSupplement.partyBName,
+        partyBContact: item.serviceProviderSupplement.partyBContact,
+        partyBPhone: item.serviceProviderSupplement.partyBPhone,
+        partyBAddress: item.serviceProviderSupplement.partyBAddress,
+        clauseItems,
+      },
+    };
+  });
 }
 
 function createApplicationNo(index: number) {
@@ -322,9 +388,7 @@ export async function submitServiceProviderAgreement(
     partyBContact: string;
     partyBPhone: string;
     partyBAddress: string;
-    cooperationMode: string;
-    settlementRule: string;
-    clauseRemark: string;
+    clauseItems: AgreementClauseItem[];
   },
 ) {
   const stored = readStoredAgreements();

@@ -1,7 +1,8 @@
-import { App, Button, Card, Descriptions, Form, Input, Space, Tag, Typography } from "antd";
+import { App, Button, Card, Descriptions, Form, Input, Space, Table, Tag, Typography } from "antd";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
+  type AgreementClauseItem,
   getPurchaseAgreementById,
   signDistributorAgreement,
   type AgreementStage,
@@ -16,6 +17,20 @@ const stageColorMap: Record<AgreementStage, string> = {
   已签署完成: "success",
   审批驳回: "error",
 };
+
+const defaultClauseItems: AgreementClauseItem[] = [
+  { id: "clause-template-1", clauseTitle: "月度进货额月度指标", defaultRule: "100%完成，月返利 1%", editable: true, description: "" },
+  { id: "clause-template-2", clauseTitle: "季度进货额季度指标", defaultRule: "100%完成，季返利 1%", editable: true, description: "" },
+  { id: "clause-template-3", clauseTitle: "订单系统维护及数据准确度", defaultRule: "无误，月返 1%", editable: true, description: "" },
+  { id: "clause-template-4", clauseTitle: "市场秩序管理规则", defaultRule: "季度无投诉，季返 1%", editable: true, description: "" },
+];
+
+function normalizeClauseItems(items?: AgreementClauseItem[]) {
+  return defaultClauseItems.map((template, index) => ({
+    ...template,
+    defaultRule: items?.[index]?.defaultRule ?? template.defaultRule,
+  }));
+}
 
 type DistributorAgreementForm = {
   partyAName: string;
@@ -155,13 +170,17 @@ export function DistributorContractDetailPage() {
 
       <Card className="page-card" title="条款信息">
         {record?.serviceProviderSupplement ? (
-          <Descriptions column={2} className="agreement-detail__descriptions">
-            <Descriptions.Item label="合作模式">{record.serviceProviderSupplement.cooperationMode}</Descriptions.Item>
-            <Descriptions.Item label="结算规则">{record.serviceProviderSupplement.settlementRule}</Descriptions.Item>
-            <Descriptions.Item label="条款说明" span={2}>
-              {record.serviceProviderSupplement.clauseRemark}
-            </Descriptions.Item>
-          </Descriptions>
+          <Table
+            rowKey="id"
+            pagination={false}
+            tableLayout="fixed"
+            dataSource={normalizeClauseItems(record.serviceProviderSupplement.clauseItems)}
+            columns={[
+              { title: "条款项", dataIndex: "clauseTitle", width: 320 },
+              { title: "默认规则", dataIndex: "defaultRule", width: 420 },
+            ]}
+            scroll={{ x: 740 }}
+          />
         ) : (
           <Typography.Text type="secondary">该模块由服务商填写，当前暂未补充。</Typography.Text>
         )}

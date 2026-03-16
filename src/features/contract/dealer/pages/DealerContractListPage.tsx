@@ -15,12 +15,7 @@ import {
   type HospitalContractFilters,
 } from "../../shared/services/hospitalContract.mock-service";
 
-const lifeColorMap: Record<string, string> = {
-  有效: "success",
-  无效: "default",
-};
-
-export function ContractListPage() {
+export function DealerContractListPage() {
   const [form] = Form.useForm<HospitalContractFilters>();
   const [items, setItems] = useState<HospitalContractRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -31,7 +26,7 @@ export function ContractListPage() {
   async function loadData(filters: HospitalContractFilters = {}) {
     setLoading(true);
     try {
-      setItems(await listHospitalContracts(filters, "admin"));
+      setItems(await listHospitalContracts(filters, "dealer"));
     } finally {
       setLoading(false);
     }
@@ -49,11 +44,10 @@ export function ContractListPage() {
     { title: "经销商名称", dataIndex: "dealerName", width: 220 },
     { title: "大区", dataIndex: "region", width: 120 },
     { title: "CG", dataIndex: "cg", width: 100 },
-    { title: "省份", dataIndex: "province", width: 120 },
     { title: "合同签署时间", dataIndex: "signedAt", width: 150 },
     { title: "合同到期时间", dataIndex: "expiredAt", width: 150 },
     { title: "最近提交流程", dataIndex: "latestActionType", width: 140, render: (value?: string) => value ?? "-" },
-    { title: "合同存续状态", dataIndex: "lifeStatus", width: 140, render: (value: string) => <Tag color={lifeColorMap[value]}>{value}</Tag> },
+    { title: "合同存续状态", dataIndex: "lifeStatus", width: 140, render: (value: string) => <Tag>{value}</Tag> },
     {
       title: "操作",
       key: "actions",
@@ -61,16 +55,16 @@ export function ContractListPage() {
       width: 280,
       render: (_, record) => (
         <Space size={4}>
-          <Button type="link" onClick={() => navigate(`/admin/contract/contract-list/detail/${record.id}`, { state: { mode: "view" } })}>
+          <Button type="link" onClick={() => navigate(`/dealer/contract/dealer-contract-list/detail/${record.id}`, { state: { mode: "view" } })}>
             查看
           </Button>
           {hasPendingContractWorkflow(record) ? <Tag color="processing">{record.pendingAction}审批中</Tag> : null}
           {canRenewOrSupplement(record) ? (
             <>
-              <Button type="link" onClick={() => navigate(`/admin/contract/contract-list/detail/${record.id}`, { state: { mode: "renew" } })}>
+              <Button type="link" onClick={() => navigate(`/dealer/contract/dealer-contract-list/detail/${record.id}`, { state: { mode: "renew" } })}>
                 续签
               </Button>
-              <Button type="link" onClick={() => navigate(`/admin/contract/contract-list/detail/${record.id}`, { state: { mode: "supplement" } })}>
+              <Button type="link" onClick={() => navigate(`/dealer/contract/dealer-contract-list/detail/${record.id}`, { state: { mode: "supplement" } })}>
                 补充 SKU
               </Button>
             </>
@@ -83,13 +77,11 @@ export function ContractListPage() {
                 modal.confirm({
                   title: "确认关闭合同？",
                   content: "确认发起关闭后，合同将直接关闭。关闭后的合同无法再进行续签、补充SKU等操作。",
-                  okText: "确认关闭",
-                  cancelText: "取消",
                   onOk: async () => {
                     await triggerContractClose(record.id, {
-                      name: user?.name ?? "管理员",
-                      account: user?.account ?? "admin",
-                      roleLabel: "管理员",
+                      name: user?.name ?? "经销商",
+                      account: user?.account ?? "dealer",
+                      roleLabel: "经销商",
                     });
                     void message.success("合同已关闭。");
                     await loadData(form.getFieldsValue());
@@ -127,22 +119,11 @@ export function ContractListPage() {
                   options={["新建合同", "续签", "补充SKU", "关闭合同"].map((item) => ({ label: item, value: item }))}
                 />
               </Form.Item>,
-              <Form.Item key="lifeStatus" name="lifeStatus" label="合同存续状态">
-                <Select
-                  allowClear
-                  placeholder="请选择"
-                  options={["有效", "无效"].map((item) => ({ label: item, value: item }))}
-                />
-              </Form.Item>,
             ]}
             actions={
               <>
-                <Button type="primary" onClick={() => void loadData(form.getFieldsValue())}>
-                  查询
-                </Button>
-                <Button onClick={() => { form.resetFields(); void loadData(); }}>
-                  重置
-                </Button>
+                <Button type="primary" onClick={() => void loadData(form.getFieldsValue())}>查询</Button>
+                <Button onClick={() => { form.resetFields(); void loadData(); }}>重置</Button>
               </>
             }
           />
@@ -153,25 +134,13 @@ export function ContractListPage() {
         className="page-card"
         extra={
           <Space>
-            <Button onClick={() => { exportHospitalContractList(items, "管理端合同列表"); void message.success("合同列表已导出为 .xlsx 文件。"); }}>
-              导出
-            </Button>
-            <Button onClick={() => void message.info("导入能力会在后续按模板字段接入。")}>导入</Button>
-            <Button type="primary" onClick={() => navigate("/admin/contract/contract-list/detail/new", { state: { mode: "create" } })}>
-              新建合同
-            </Button>
+            <Button onClick={() => { exportHospitalContractList(items, "经销商端合同列表"); void message.success("合同列表已导出为 .xlsx 文件。"); }}>导出</Button>
+            <Button onClick={() => void message.info("导入能力会在后续按合同模板字段接入。")}>导入</Button>
+            <Button type="primary" onClick={() => navigate("/dealer/contract/dealer-contract-list/detail/new", { state: { mode: "create" } })}>新建合同</Button>
           </Space>
         }
       >
-        <Table
-          rowKey="id"
-          loading={loading}
-          dataSource={items}
-          columns={columns}
-          tableLayout="fixed"
-          scroll={{ x: 2240 }}
-          pagination={{ pageSize: 8, showSizeChanger: true, showTotal: (total) => `共 ${total} 条` }}
-        />
+        <Table rowKey="id" loading={loading} dataSource={items} columns={columns} tableLayout="fixed" scroll={{ x: 2120 }} pagination={{ pageSize: 8, showSizeChanger: true, showTotal: (total) => `共 ${total} 条` }} />
       </Card>
     </Space>
   );

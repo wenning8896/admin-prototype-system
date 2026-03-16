@@ -1,7 +1,8 @@
-import { App, Button, Card, Descriptions, Form, Input, Space, Tag, Typography } from "antd";
+import { App, Button, Card, Descriptions, Form, Input, Space, Table, Tag, Typography } from "antd";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
+  type AgreementClauseItem,
   getPurchaseAgreementById,
   signServiceProviderAgreement,
   submitServiceProviderAgreement,
@@ -23,10 +24,46 @@ type AgreementDetailForm = {
   partyBContact: string;
   partyBPhone: string;
   partyBAddress: string;
-  cooperationMode: string;
-  settlementRule: string;
-  clauseRemark: string;
+  clauseItems: AgreementClauseItem[];
 };
+
+const defaultClauseItems: AgreementClauseItem[] = [
+  {
+    id: "clause-template-1",
+    clauseTitle: "月度进货额月度指标",
+    defaultRule: "100%完成，月返利 1%",
+    editable: true,
+    description: "百分比需支持编辑",
+  },
+  {
+    id: "clause-template-2",
+    clauseTitle: "季度进货额季度指标",
+    defaultRule: "100%完成，季返利 1%",
+    editable: true,
+    description: "原描述为“季度进货额月度指标”，建议产品和业务统一口径",
+  },
+  {
+    id: "clause-template-3",
+    clauseTitle: "订单系统维护及数据准确度",
+    defaultRule: "无误，月返 1%",
+    editable: true,
+    description: "百分比需支持编辑",
+  },
+  {
+    id: "clause-template-4",
+    clauseTitle: "市场秩序管理规则",
+    defaultRule: "季度无投诉，季返 1%",
+    editable: true,
+    description: "百分比需支持编辑",
+  },
+];
+
+function normalizeClauseItems(items?: AgreementClauseItem[]) {
+  return defaultClauseItems.map((template, index) => ({
+    ...template,
+    defaultRule: items?.[index]?.defaultRule ?? template.defaultRule,
+  }));
+}
 
 export function DealerPurchaseSaleAgreementDetailPage() {
   const [form] = Form.useForm<AgreementDetailForm>();
@@ -52,9 +89,7 @@ export function DealerPurchaseSaleAgreementDetailPage() {
           partyBContact: next?.serviceProviderSupplement?.partyBContact ?? next?.serviceProviderOwner ?? "",
           partyBPhone: next?.serviceProviderSupplement?.partyBPhone ?? "",
           partyBAddress: next?.serviceProviderSupplement?.partyBAddress ?? "",
-          cooperationMode: next?.serviceProviderSupplement?.cooperationMode ?? "",
-          settlementRule: next?.serviceProviderSupplement?.settlementRule ?? "",
-          clauseRemark: next?.serviceProviderSupplement?.clauseRemark ?? "",
+          clauseItems: normalizeClauseItems(next?.serviceProviderSupplement?.clauseItems),
         });
       } finally {
         setLoading(false);
@@ -77,6 +112,8 @@ export function DealerPurchaseSaleAgreementDetailPage() {
       setSubmitting(false);
     }
   }
+
+  const watchedClauseItems = Form.useWatch("clauseItems", form) ?? normalizeClauseItems();
 
   async function handleSign() {
     if (!record) {
@@ -176,17 +213,34 @@ export function DealerPurchaseSaleAgreementDetailPage() {
 
       <Card className="page-card" title="条款信息">
         <Form form={form} layout="vertical" disabled={record?.status !== "待服务商补充"}>
-          <div className="agreement-page__filters">
-            <Form.Item name="cooperationMode" label="合作模式" rules={[{ required: true, message: "请输入合作模式" }]}>
-              <Input placeholder="请输入合作模式" />
-            </Form.Item>
-            <Form.Item name="settlementRule" label="结算规则" rules={[{ required: true, message: "请输入结算规则" }]}>
-              <Input placeholder="请输入结算规则" />
-            </Form.Item>
-          </div>
-          <Form.Item name="clauseRemark" label="条款说明" rules={[{ required: true, message: "请输入条款说明" }]}>
-            <Input.TextArea rows={4} placeholder="请输入条款说明" />
-          </Form.Item>
+          <Table
+            rowKey="id"
+            pagination={false}
+            tableLayout="fixed"
+            dataSource={watchedClauseItems}
+            columns={[
+              {
+                title: "条款项",
+                dataIndex: "clauseTitle",
+                width: 320,
+                render: (value: string) => value,
+              },
+              {
+                title: "默认规则",
+                dataIndex: "defaultRule",
+                width: 420,
+                render: (value: string, _: AgreementClauseItem, index: number) =>
+                  record?.status === "待服务商补充" ? (
+                    <Form.Item name={["clauseItems", index, "defaultRule"]} noStyle rules={[{ required: true, message: "请输入默认规则" }]}>
+                      <Input.TextArea autoSize={{ minRows: 2, maxRows: 4 }} placeholder="请输入默认规则" />
+                    </Form.Item>
+                  ) : (
+                    value
+                  ),
+              },
+            ]}
+            scroll={{ x: 740 }}
+          />
         </Form>
       </Card>
     </Space>
