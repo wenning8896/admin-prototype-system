@@ -269,7 +269,7 @@ export function getDealerDistributorSupplyRelationById(id: string) {
 export async function reviewDealerDistributorSupplyRelation(params: {
   id: string;
   action: "approve" | "reject";
-  remark: string;
+  remark?: string;
   reviewerAccount: string;
   reviewerName: string;
 }) {
@@ -299,4 +299,24 @@ export async function reviewDealerDistributorSupplyRelation(params: {
 
   persistMergedRecord(nextRecord);
   return nextRecord;
+}
+
+export async function batchReviewDealerDistributorSupplyRelations(params: {
+  ids: string[];
+  action: "approve" | "reject";
+  reviewerAccount: string;
+  reviewerName: string;
+}) {
+  await Promise.all(
+    params.ids.map((id) =>
+      reviewDealerDistributorSupplyRelation({
+        id,
+        action: params.action,
+        reviewerAccount: params.reviewerAccount,
+        reviewerName: params.reviewerName,
+      }),
+    ),
+  );
+
+  return `${params.ids.length} 条关系已${params.action === "approve" ? "批量通过" : "批量驳回"}。`;
 }
