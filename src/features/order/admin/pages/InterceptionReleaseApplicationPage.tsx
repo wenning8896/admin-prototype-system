@@ -20,13 +20,13 @@ const statusColorMap: Record<InterceptionReleaseApplicationStatus, string> = {
 
 export function InterceptionReleaseApplicationPage() {
   const [form] = Form.useForm<InterceptionReleaseApplicationFilters>();
-  const [dealerForm] = Form.useForm<{ dealerCode?: string }>();
   const { message } = App.useApp();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState<InterceptionReleaseApplicationRecord[]>([]);
   const [dealerDrawerOpen, setDealerDrawerOpen] = useState(false);
   const [dealerOptions, setDealerOptions] = useState<InterceptionDealerOption[]>([]);
+  const [selectedDealerCode, setSelectedDealerCode] = useState<string>();
 
   async function loadData(filters: InterceptionReleaseApplicationFilters = {}) {
     setLoading(true);
@@ -132,7 +132,7 @@ export function InterceptionReleaseApplicationPage() {
             <Button
               type="primary"
               onClick={() => {
-                dealerForm.resetFields();
+                setSelectedDealerCode(undefined);
                 setDealerDrawerOpen(true);
               }}
             >
@@ -163,15 +163,15 @@ export function InterceptionReleaseApplicationPage() {
         title="选择经销商"
         open={dealerDrawerOpen}
         onClose={() => setDealerDrawerOpen(false)}
-        width={720}
+        width={1120}
         extra={
           <Space>
             <Button onClick={() => setDealerDrawerOpen(false)}>取消</Button>
             <Button
               type="primary"
+              disabled={!selectedDealerCode}
               onClick={async () => {
-                const values = await dealerForm.validateFields();
-                const target = dealerOptions.find((item) => item.dealerCode === values.dealerCode);
+                const target = dealerOptions.find((item) => item.dealerCode === selectedDealerCode);
                 if (!target) {
                   return;
                 }
@@ -188,26 +188,34 @@ export function InterceptionReleaseApplicationPage() {
           </Space>
         }
       >
-        <Form form={dealerForm} layout="vertical">
-          <Form.Item name="dealerCode" rules={[{ required: true, message: "请选择一个经销商" }]}>
-            <Radio.Group style={{ width: "100%" }}>
-              <Space direction="vertical" size={12} style={{ width: "100%" }}>
-                {dealerOptions.map((item) => (
-                  <Radio key={item.dealerCode} value={item.dealerCode} style={{ width: "100%" }}>
-                    <div>
-                      <div>
-                        {item.businessUnit} / {item.region} / {item.cg}
-                      </div>
-                      <div>
-                        {item.dealerCode} / {item.dealerName}
-                      </div>
-                    </div>
-                  </Radio>
-                ))}
-              </Space>
-            </Radio.Group>
-          </Form.Item>
-        </Form>
+        <Table
+          rowKey="dealerCode"
+          dataSource={dealerOptions}
+          pagination={false}
+          tableLayout="fixed"
+          columns={[
+            { title: "经销商编码", dataIndex: "dealerCode", width: 160 },
+            { title: "经销商名称", dataIndex: "dealerName", width: 240 },
+            { title: "L4", dataIndex: "l4", width: 100 },
+            { title: "L5", dataIndex: "l5", width: 100 },
+            { title: "L6", dataIndex: "l6", width: 100 },
+            { title: "业务单元", dataIndex: "businessUnit", width: 120 },
+            { title: "大区", dataIndex: "region", width: 140 },
+            { title: "CG", dataIndex: "cg", width: 100 },
+            { title: "经销商类型", dataIndex: "dealerType", width: 120 },
+            {
+              title: "操作",
+              width: 100,
+              fixed: "right",
+              render: (_, record) => (
+                <Button type={selectedDealerCode === record.dealerCode ? "primary" : "link"} onClick={() => setSelectedDealerCode(record.dealerCode)}>
+                  选择
+                </Button>
+              ),
+            },
+          ]}
+          scroll={{ x: 1280 }}
+        />
       </Drawer>
     </Space>
   );

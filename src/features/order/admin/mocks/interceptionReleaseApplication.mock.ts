@@ -17,7 +17,12 @@ export type InterceptionReleaseApplicationRecord = {
   cg: string;
   dealerCode: string;
   dealerName: string;
+  l4: string;
+  l5: string;
+  l6: string;
+  dealerType: "DD" | "DT";
   applyReason: string;
+  attachmentName?: string;
   approvalStatus: InterceptionReleaseApplicationStatus;
   approvalNode: string;
   appliedAt: string;
@@ -33,7 +38,12 @@ export const interceptionReleaseApplicationSeedRecords: InterceptionReleaseAppli
     cg: "上海",
     dealerCode: "D1917070",
     dealerName: "辽宁嘉丰进出口贸易有限公司",
+    l4: "L4-A",
+    l5: "L5-A",
+    l6: "L6-A",
+    dealerType: "DT",
     applyReason: "客户紧急补货，需要临时放开库存拦截。",
+    attachmentName: "解除拦截申请说明.pdf",
     approvalStatus: "待审批",
     approvalNode: "平台审批节点",
     appliedAt: "2026-03-15 10:30",

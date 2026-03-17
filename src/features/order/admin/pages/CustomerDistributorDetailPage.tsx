@@ -21,14 +21,16 @@ import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../../../../auth/useAuth";
 import {
+  activateCustomerDistributor,
   businessUnitOptions,
   channelOptions,
   cityMasterOptions,
   cooperationStatusOptions,
+  dealerTypeOptions,
   getCustomerDistributorById,
   getCustomerDistributorDisplayStatus,
+  hasSupplyRelationStructureChange,
   regionOptions,
-  saveCustomerDistributor,
   streetOptions,
   submitCustomerDistributor,
   type CustomerDistributorRecord,
@@ -64,6 +66,10 @@ export function CustomerDistributorDetailPage() {
   const watchedBusinessUnits = Form.useWatch("businessUnits", form) ?? [];
 
   const record = useMemo(() => (isCreate || !detailId ? null : getCustomerDistributorById(detailId)), [detailId, isCreate]);
+  const baselineRecord = useMemo(
+    () => (record ? (JSON.parse(JSON.stringify(record)) as CustomerDistributorRecord) : null),
+    [record],
+  );
   const displayStatus = useMemo(
     () => (record ? getCustomerDistributorDisplayStatus(record) : isCreate ? "草稿" : undefined),
     [isCreate, record],
@@ -207,20 +213,6 @@ export function CustomerDistributorDetailPage() {
     };
   }
 
-  async function handleSave() {
-    const values = await form.validateFields();
-    const nextRecord = buildRecord(values);
-    const approvalStatus =
-      record?.approvalStatus === "已驳回" ? "已驳回" : record?.approvalStatus === "已通过" ? "已通过" : "草稿";
-
-    saveCustomerDistributor({
-      ...nextRecord,
-      approvalStatus,
-    });
-    void message.success("分销商信息已保存。");
-    navigate("/admin/order/distributor-list");
-  }
-
   async function handleSubmit() {
     if (!user) {
       return;
@@ -228,21 +220,39 @@ export function CustomerDistributorDetailPage() {
 
     const values = await form.validateFields();
     const nextRecord = buildRecord(values);
+    const needApproval = hasSupplyRelationStructureChange(baselineRecord, nextRecord);
 
     modal.confirm({
-      title: record?.approvalStatus === "已驳回" ? "确认重新提交审批？" : "确认提交审批？",
-      content: "提交后将进入分销商审批列表，待审批通过后自动变更为启用状态。",
-      okText: "确认提交",
+      title: needApproval
+        ? record?.approvalStatus === "已驳回"
+          ? "确认重新提交审批？"
+          : "确认提交审批？"
+        : "确认提交保存？",
+      content: needApproval
+        ? "本次变更涉及经销商供货关系新增或删除，提交后将进入分销商审批列表，审批通过后自动变更为启用状态。"
+        : "本次变更未涉及经销商供货关系新增或删除，将直接保存并生效，不进入审批。",
+      okText: needApproval ? "确认提交" : "确认保存",
       cancelText: "取消",
       onOk: async () => {
-        submitCustomerDistributor({
-          record: nextRecord,
-          account: user.account,
-          operatorName: user.name,
-          remark: record?.approvalStatus === "已驳回" ? "驳回后重新提交审批" : "新建分销商提交审批",
+        if (needApproval) {
+          submitCustomerDistributor({
+            record: nextRecord,
+            previousRecord: baselineRecord,
+            account: user.account,
+            operatorName: user.name,
+            remark: record?.approvalStatus === "已驳回" ? "驳回后重新提交供货关系审批" : "提交经销商供货关系审批",
+          });
+          void message.success("已提交至分销商审批。");
+          navigate("/admin/order/distributor-approval");
+          return;
+        }
+
+        activateCustomerDistributor({
+          ...nextRecord,
+          approvalHistory: record?.approvalHistory ?? nextRecord.approvalHistory,
         });
-        void message.success("已提交至分销商审批。");
-        navigate("/admin/order/distributor-approval");
+        void message.success("分销商信息已直接生效。");
+        navigate("/admin/order/distributor-list");
       },
     });
   }
@@ -262,7 +272,8 @@ export function CustomerDistributorDetailPage() {
   const availableBusinessUnitOptions = businessUnitOptions.filter(
     (item) => !watchedBusinessUnits.some((unit) => unit?.businessUnit === item),
   );
-  const canSubmit = !isView && (isCreate || record?.approvalStatus === "草稿" || record?.approvalStatus === "已驳回");
+  const canSubmit =
+    !isView && (isCreate || record?.approvalStatus === "草稿" || record?.approvalStatus === "已驳回" || record?.approvalStatus === "已通过");
 
   if (!isCreate && !record) {
     return (
@@ -288,7 +299,6 @@ export function CustomerDistributorDetailPage() {
           {isView ? null : (
             <Space>
               <Button onClick={() => navigate("/admin/order/distributor-list")}>取消</Button>
-              <Button onClick={() => void handleSave()}>保存</Button>
               {canSubmit ? (
                 <Button type="primary" onClick={() => void handleSubmit()}>
                   {record?.approvalStatus === "已驳回" ? "重新提交" : "提交"}
@@ -489,7 +499,7 @@ export function CustomerDistributorDetailPage() {
                                   currentUnit.supplyRelations = [
                                     ...(currentUnit.supplyRelations ?? []),
                                     {
-                                      dealerType: "经销商",
+                                      dealerType: "DT",
                                       dealerCode: "",
                                       dealerName: "",
                                       shipToCode: "",
@@ -534,7 +544,12 @@ export function CustomerDistributorDetailPage() {
                               {(activeUnit?.supplyRelations ?? []).map((_, relationIndex) => (
                                 <div key={`${activeField.key}-${relationIndex}`} className="customer-distributor-detail__editable-row">
                                   <Form.Item name={[activeField.name, "supplyRelations", relationIndex, "dealerType"]} rules={[{ required: true, message: "请选择经销商类型" }]}>
-                                    <Select options={[{ label: "经销商", value: "经销商" }, { label: "DT经销商", value: "DT经销商" }]} />
+                                    <Select
+                                      options={dealerTypeOptions.map((item) => ({
+                                        label: item,
+                                        value: item,
+                                      }))}
+                                    />
                                   </Form.Item>
                                   <Form.Item name={[activeField.name, "supplyRelations", relationIndex, "dealerCode"]} rules={[{ required: true, message: "请输入经销商编码" }]}>
                                     <Input placeholder="输入经销商编码" />

@@ -9,6 +9,7 @@ import {
   reviewCustomerDistributor,
   type CustomerDistributorApprovalHistory,
   type CustomerDistributorRecord,
+  type SupplyRelationApprovalItem,
   type SupplyRelation,
 } from "./CustomerDistributor.shared";
 
@@ -75,7 +76,14 @@ export function CustomerDistributorApprovalDetailPage() {
     });
   }
 
-  const relationColumns: ColumnsType<SupplyRelation> = [
+  const relationColumns: ColumnsType<SupplyRelation | SupplyRelationApprovalItem> = [
+    {
+      title: "变更类型",
+      dataIndex: "changeType",
+      width: 120,
+      render: (value?: "新增" | "删除") =>
+        value ? <Tag color={value === "新增" ? "success" : "error"}>{value}</Tag> : "-",
+    },
     { title: "经销商类型", dataIndex: "dealerType", width: 120 },
     { title: "经销商编码", dataIndex: "dealerCode", width: 140 },
     { title: "经销商名称", dataIndex: "dealerName", width: 180 },
@@ -132,7 +140,12 @@ export function CustomerDistributorApprovalDetailPage() {
         ) : null}
       </Card>
 
-      {(record?.businessUnits ?? []).map((unit) => (
+      {(record?.businessUnits ?? []).map((unit) => {
+        const approvalRelationRows = (record?.pendingSupplyRelationChanges ?? []).filter(
+          (item) => item.businessUnitId === unit.id,
+        );
+
+        return (
         <Card key={unit.id} className="page-card" title={`业务单元信息 · ${unit.businessUnit}`}>
           <Space direction="vertical" size={16} className="page-stack">
             <Descriptions column={2} className="agreement-detail__descriptions">
@@ -150,7 +163,7 @@ export function CustomerDistributorApprovalDetailPage() {
               </Typography.Title>
               <Table
                 rowKey="id"
-                dataSource={unit.supplyRelations}
+                dataSource={record?.approvalStatus === "待审批" ? approvalRelationRows : unit.supplyRelations}
                 columns={relationColumns}
                 pagination={false}
                 tableLayout="fixed"
@@ -159,7 +172,8 @@ export function CustomerDistributorApprovalDetailPage() {
             </div>
           </Space>
         </Card>
-      ))}
+        );
+      })}
 
       <Card className="page-card" title="审批记录">
         <Timeline

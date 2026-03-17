@@ -9,6 +9,7 @@ export type DealerDistributorSupplyRelationRecord = {
   distributorCode: string;
   distributorName: string;
   status: DealerDistributorSupplyRelationStatus;
+  creatorAccount: string;
   createdAt: string;
   updatedAt: string;
   approvalHistory: Array<{
@@ -31,6 +32,7 @@ export const dealerDistributorSupplyRelationSeedRecords: DealerDistributorSupply
     distributorCode: "EDS240301",
     distributorName: "上海联享分销有限公司",
     status: "启用",
+    creatorAccount: "admin",
     createdAt: "2026-03-08 10:12",
     updatedAt: "2026-03-09 14:20",
     approvalHistory: [
@@ -61,6 +63,7 @@ export const dealerDistributorSupplyRelationSeedRecords: DealerDistributorSupply
     distributorCode: "EDS240518",
     distributorName: "广州星河渠道管理有限公司",
     status: "待审批",
+    creatorAccount: "admin",
     createdAt: "2026-03-12 09:05",
     updatedAt: "2026-03-12 09:05",
     approvalHistory: [
@@ -83,6 +86,7 @@ export const dealerDistributorSupplyRelationSeedRecords: DealerDistributorSupply
     distributorCode: "EDS240612",
     distributorName: "北京北辰供配有限公司",
     status: "已驳回",
+    creatorAccount: "admin",
     createdAt: "2026-03-13 11:30",
     updatedAt: "2026-03-14 16:10",
     approvalHistory: [

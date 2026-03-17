@@ -29,6 +29,12 @@ export type SupplyRelation = {
   cooperationEndDate?: string;
 };
 
+export type SupplyRelationApprovalItem = SupplyRelation & {
+  businessUnitId: string;
+  businessUnit: string;
+  changeType: "新增" | "删除";
+};
+
 export type CustomerDistributorRecord = {
   id: string;
   distributorCode: string;
@@ -55,6 +61,7 @@ export type CustomerDistributorRecord = {
   submittedAt?: string;
   approvalHistory: CustomerDistributorApprovalHistory[];
   supplyRelations: SupplyRelation[];
+  pendingSupplyRelationChanges?: SupplyRelationApprovalItem[];
   businessUnits: Array<{
     id: string;
     businessUnit: string;
@@ -158,6 +165,7 @@ export const businessUnitOptions = ["干货", "咖啡", "奶品"];
 export const channelOptions = ["现代渠道", "传统渠道", "O2O渠道"];
 export const cityMasterOptions = ["北京", "上海", "广州", "成都"];
 export const cooperationStatusOptions = ["合作中", "已暂停"];
+export const dealerTypeOptions = ["DT", "DD"];
 
 function buildSeedRecords(): CustomerDistributorRecord[] {
   return eDistributorSeedRecords.map((item, index) => ({
@@ -199,7 +207,7 @@ function buildSeedRecords(): CustomerDistributorRecord[] {
     supplyRelations: [
       {
         id: `${item.id}-relation-1`,
-        dealerType: "经销商",
+        dealerType: index % 2 === 0 ? "DT" : "DD",
         dealerCode: `DL${String(index + 1).padStart(3, "0")}`,
         dealerName: index % 2 === 0 ? "华东经销商A" : "华北经销商B",
         shipToCode: `SHIPTO${String(index + 1).padStart(4, "0")}`,
@@ -220,7 +228,7 @@ function buildSeedRecords(): CustomerDistributorRecord[] {
         supplyRelations: [
           {
             id: `${item.id}-relation-1`,
-            dealerType: "经销商",
+            dealerType: index % 2 === 0 ? "DT" : "DD",
             dealerCode: `DL${String(index + 1).padStart(3, "0")}`,
             dealerName: index % 2 === 0 ? "华东经销商A" : "华北经销商B",
             shipToCode: `SHIPTO${String(index + 1).padStart(4, "0")}`,
@@ -296,6 +304,79 @@ export function saveCustomerDistributor(record: CustomerDistributorRecord) {
   persistStoredRecords([record, ...stored]);
 }
 
+function getRelationIdentity(relation: SupplyRelation) {
+  return relation.id || [relation.dealerType, relation.dealerCode, relation.shipToCode].join("|");
+}
+
+function flattenSupplyRelations(record?: Pick<CustomerDistributorRecord, "businessUnits" | "supplyRelations"> | null) {
+  if (!record) {
+    return [];
+  }
+
+  if (record.businessUnits?.length) {
+    return record.businessUnits.flatMap((unit) => unit.supplyRelations ?? []);
+  }
+
+  return record.supplyRelations ?? [];
+}
+
+function flattenSupplyRelationsByBusinessUnit(
+  record?: Pick<CustomerDistributorRecord, "businessUnits" | "supplyRelations"> | null,
+) {
+  if (!record?.businessUnits?.length) {
+    return [];
+  }
+
+  return record.businessUnits.flatMap((unit) =>
+    (unit.supplyRelations ?? []).map((relation) => ({
+      ...relation,
+      businessUnitId: unit.id,
+      businessUnit: unit.businessUnit,
+    })),
+  );
+}
+
+export function hasSupplyRelationStructureChange(
+  previousRecord: Pick<CustomerDistributorRecord, "businessUnits" | "supplyRelations"> | null | undefined,
+  nextRecord: Pick<CustomerDistributorRecord, "businessUnits" | "supplyRelations">,
+) {
+  const previousRelations = flattenSupplyRelations(previousRecord);
+  const nextRelations = flattenSupplyRelations(nextRecord);
+
+  if (previousRelations.length !== nextRelations.length) {
+    return true;
+  }
+
+  const previousRelationIds = new Set(previousRelations.map(getRelationIdentity));
+  const nextRelationIds = new Set(nextRelations.map(getRelationIdentity));
+
+  if (previousRelationIds.size !== nextRelationIds.size) {
+    return true;
+  }
+
+  return [...nextRelationIds].some((item) => !previousRelationIds.has(item));
+}
+
+export function getSupplyRelationApprovalItems(
+  previousRecord: Pick<CustomerDistributorRecord, "businessUnits" | "supplyRelations"> | null | undefined,
+  nextRecord: Pick<CustomerDistributorRecord, "businessUnits" | "supplyRelations">,
+): SupplyRelationApprovalItem[] {
+  const previousRelations = flattenSupplyRelationsByBusinessUnit(previousRecord);
+  const nextRelations = flattenSupplyRelationsByBusinessUnit(nextRecord);
+  const previousMap = new Map(previousRelations.map((relation) => [getRelationIdentity(relation), relation]));
+  const nextMap = new Map(nextRelations.map((relation) => [getRelationIdentity(relation), relation]));
+
+  const additions: SupplyRelationApprovalItem[] = nextRelations
+    .filter((relation) => !previousMap.has(getRelationIdentity(relation)))
+    .map((relation) => ({ ...relation, changeType: "新增" }));
+
+  const deletions: SupplyRelationApprovalItem[] = previousRelations
+    .filter((relation) => !nextMap.has(getRelationIdentity(relation)))
+    .map((relation) => ({ ...relation, changeType: "删除" }));
+
+  return [...additions, ...deletions];
+}
+
 export function listCustomerDistributors(filters: CustomerDistributorFilters = {}) {
   const keyword = filters.keyword?.trim().toLowerCase();
   const code = filters.distributorCode?.trim().toLowerCase();
@@ -363,17 +444,20 @@ export function exportCustomerDistributors(records: CustomerDistributorRecord[])
 
 export function submitCustomerDistributor(params: {
   record: CustomerDistributorRecord;
+  previousRecord?: Pick<CustomerDistributorRecord, "id" | "businessUnits" | "supplyRelations"> | null;
   account: string;
   operatorName: string;
   remark?: string;
 }) {
   const now = dayjs().format("YYYY-MM-DD HH:mm");
+  const previousRecord = params.previousRecord ?? getCustomerDistributorById(params.record.id);
   const nextRecord: CustomerDistributorRecord = {
     ...params.record,
     updatedAt: now,
     submittedAt: now,
     status: "停用",
     approvalStatus: "待审批",
+    pendingSupplyRelationChanges: getSupplyRelationApprovalItems(previousRecord, params.record),
     approvalHistory: [
       ...(params.record.approvalHistory ?? []).filter((item) => item.decision !== "提交申请"),
       {
@@ -389,6 +473,20 @@ export function submitCustomerDistributor(params: {
     ],
   };
 
+  saveCustomerDistributor(nextRecord);
+  return nextRecord;
+}
+
+export function activateCustomerDistributor(record: CustomerDistributorRecord) {
+  const now = dayjs().format("YYYY-MM-DD HH:mm");
+  const nextRecord: CustomerDistributorRecord = {
+    ...record,
+    updatedAt: now,
+    submittedAt: record.submittedAt,
+    approvalStatus: "已通过",
+    status: "启用",
+    pendingSupplyRelationChanges: [],
+  };
   saveCustomerDistributor(nextRecord);
   return nextRecord;
 }
@@ -411,6 +509,7 @@ export function reviewCustomerDistributor(params: {
     updatedAt: now,
     approvalStatus: params.action === "approve" ? "已通过" : "已驳回",
     status: params.action === "approve" ? "启用" : "停用",
+    pendingSupplyRelationChanges: [],
     approvalHistory: [
       ...(target.approvalHistory ?? []),
       {

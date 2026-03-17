@@ -25,6 +25,10 @@ export type InterceptionDealerOption = {
   cg: string;
   dealerCode: string;
   dealerName: string;
+  l4: string;
+  l5: string;
+  l6: string;
+  dealerType: "DD" | "DT";
 };
 
 function readStoredRecords() {
@@ -131,6 +135,10 @@ export function listInterceptEligibleDealers() {
         cg: item.cg,
         dealerCode: item.dealerCode,
         dealerName: item.dealerName,
+        l4: item.businessUnit === "OMNI" ? "L4-A" : "L4-B",
+        l5: item.businessUnit === "OMNI" ? "L5-A" : "L5-B",
+        l6: item.businessUnit === "OMNI" ? "L6-A" : "L6-B",
+        dealerType: item.businessUnit === "OMNI" ? "DT" : "DD",
       });
     }
   });
@@ -157,7 +165,12 @@ export function createInterceptionReleaseApplication(payload: {
   cg: string;
   dealerCode: string;
   dealerName: string;
+  l4: string;
+  l5: string;
+  l6: string;
+  dealerType: "DD" | "DT";
   applyReason: string;
+  attachmentName?: string;
   products: Array<{
     shipToCode: string;
     shipToName: string;
@@ -174,7 +187,12 @@ export function createInterceptionReleaseApplication(payload: {
     cg: payload.cg,
     dealerCode: payload.dealerCode,
     dealerName: payload.dealerName,
+    l4: payload.l4,
+    l5: payload.l5,
+    l6: payload.l6,
+    dealerType: payload.dealerType,
     applyReason: payload.applyReason,
+    attachmentName: payload.attachmentName,
     approvalStatus: "待审批",
     approvalNode: "平台审批节点",
     appliedAt: dayjs().format("YYYY-MM-DD HH:mm"),

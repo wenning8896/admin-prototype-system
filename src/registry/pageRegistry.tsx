@@ -39,6 +39,7 @@ import { ServiceProviderInventoryListPage } from "../features/order/admin/pages/
 import { ServiceProviderListPage } from "../features/order/admin/pages/ServiceProviderListPage";
 import { ShipToListPage } from "../features/order/admin/pages/ShipToListPage";
 import { ShipToMappingPage } from "../features/order/admin/pages/ShipToMappingPage";
+import { SiAchievementEstimationDashboardPage } from "../features/order/admin/pages/SiAchievementEstimationDashboardPage";
 import { SoldToListPage } from "../features/order/admin/pages/SoldToListPage";
 import {
   DistributorManagerMaintenancePage,
@@ -78,6 +79,7 @@ const pageRegistry: Record<string, ComponentType> = {
   "admin.order.dealer-distributor-supply-relation-maintenance": DealerDistributorSupplyRelationPage,
   "admin.order.dealer-distributor-supply-relation-approval": DealerDistributorSupplyRelationApprovalPage,
   "admin.order.interception-release-application": InterceptionReleaseApplicationPage,
+  "admin.order.si-achievement-estimation-dashboard": SiAchievementEstimationDashboardPage,
   "admin.order.e-distributor-list": EDistributorListPage,
   "admin.order.contract-signing-list": ContractSigningListPage,
   "admin.order.contract-signing-approval": ContractSigningApprovalPage,

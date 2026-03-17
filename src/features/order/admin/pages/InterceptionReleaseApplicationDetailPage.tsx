@@ -1,6 +1,6 @@
-import { App, Button, Card, Form, Input, Select, Space, Table, Tag, Typography } from "antd";
+import { App, Button, Card, Descriptions, Form, Input, Modal, Space, Table, Tag, Typography } from "antd";
 import type { ColumnsType } from "antd/es/table";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import type { InterceptionReleaseApplicationRecord, InterceptionReleaseApplicationStatus, InterceptionReleaseProductItem } from "../mocks/interceptionReleaseApplication.mock";
 import {
@@ -20,7 +20,8 @@ type ProductFormItem = {
 };
 
 type ApplicationFormValues = {
-  applyReason: string;
+  applyReason?: string;
+  attachmentName?: string;
   products: ProductFormItem[];
 };
 
@@ -40,6 +41,8 @@ export function InterceptionReleaseApplicationDetailPage() {
   const dealerCode = new URLSearchParams(location.search).get("dealerCode") ?? "";
   const isCreate = detailId === "new";
   const isView = mode === "view";
+  const [productModalOpen, setProductModalOpen] = useState(false);
+  const [selectedProductKeys, setSelectedProductKeys] = useState<React.Key[]>([]);
   const dealerInfo = useMemo(() => {
     if (!dealerCode) {
       return null;
@@ -51,6 +54,7 @@ export function InterceptionReleaseApplicationDetailPage() {
     () => (dealerCode ? listInterceptProductOptionsByDealer(dealerCode) : []),
     [dealerCode],
   );
+  const watchedProducts = Form.useWatch("products", form) ?? [];
   const record = useMemo<InterceptionReleaseApplicationRecord | null>(
     () => (isCreate || !detailId ? null : getInterceptionReleaseApplicationById(detailId)),
     [detailId, isCreate],
@@ -59,7 +63,7 @@ export function InterceptionReleaseApplicationDetailPage() {
   useEffect(() => {
     if (isCreate) {
       form.setFieldsValue({
-        products: [{}],
+        products: [],
       });
       return;
     }
@@ -95,7 +99,12 @@ export function InterceptionReleaseApplicationDetailPage() {
       cg: dealerInfo.cg,
       dealerCode: dealerInfo.dealerCode,
       dealerName: dealerInfo.dealerName,
-      applyReason: values.applyReason,
+      l4: dealerInfo.l4,
+      l5: dealerInfo.l5,
+      l6: dealerInfo.l6,
+      dealerType: dealerInfo.dealerType,
+      applyReason: values.applyReason ?? "",
+      attachmentName: values.attachmentName,
       products: (values.products ?? []).map((item) => ({
         shipToCode: item.shipToCode ?? "",
         shipToName: item.shipToName ?? "",
@@ -108,10 +117,30 @@ export function InterceptionReleaseApplicationDetailPage() {
     navigate("/admin/order/interception-release-application");
   }
 
+  function handleOpenProductModal() {
+    setSelectedProductKeys((watchedProducts ?? []).map((item) => item.optionId ?? `${item.shipToCode}-${item.productCode}`));
+    setProductModalOpen(true);
+  }
+
+  function handleConfirmProducts() {
+    const selected = productOptions.filter((item) => selectedProductKeys.includes(item.id));
+    form.setFieldValue(
+      "products",
+      selected.map((item) => ({
+        optionId: item.id,
+        shipToCode: item.shipToCode,
+        shipToName: item.shipToName,
+        shape2: item.shape2,
+        productCode: item.productCode,
+        productName: item.productName,
+      })),
+    );
+    setProductModalOpen(false);
+  }
+
   const productColumns: ColumnsType<InterceptionReleaseProductItem> = [
     { title: "ShipTo编码", dataIndex: "shipToCode", width: 160 },
     { title: "ShipTo名称", dataIndex: "shipToName", width: 180 },
-    { title: "Shape2", dataIndex: "shape2", width: 120 },
     { title: "产品编码", dataIndex: "productCode", width: 160 },
     { title: "产品名称", dataIndex: "productName", width: 240 },
   ];
@@ -144,27 +173,41 @@ export function InterceptionReleaseApplicationDetailPage() {
         <Space direction="vertical" size={16} className="page-stack">
           <Card className="page-card" title="经销商信息">
             {isCreate && dealerInfo ? (
-              <div className="agreement-detail__descriptions">
-                <div>业务单元：{dealerInfo.businessUnit}</div>
-                <div>大区：{dealerInfo.region}</div>
-                <div>CG：{dealerInfo.cg}</div>
-                <div>经销商编码：{dealerInfo.dealerCode}</div>
-                <div>经销商名称：{dealerInfo.dealerName}</div>
-              </div>
+              <Descriptions column={2} className="agreement-detail__descriptions">
+                <Descriptions.Item label="业务单元">{dealerInfo.businessUnit}</Descriptions.Item>
+                <Descriptions.Item label="大区">{dealerInfo.region}</Descriptions.Item>
+                <Descriptions.Item label="CG">{dealerInfo.cg}</Descriptions.Item>
+                <Descriptions.Item label="经销商编码">{dealerInfo.dealerCode}</Descriptions.Item>
+                <Descriptions.Item label="经销商名称">{dealerInfo.dealerName}</Descriptions.Item>
+                <Descriptions.Item label="经销商类型">{dealerInfo.dealerType}</Descriptions.Item>
+                <Descriptions.Item label="L4">{dealerInfo.l4}</Descriptions.Item>
+                <Descriptions.Item label="L5 / L6">{`${dealerInfo.l5} / ${dealerInfo.l6}`}</Descriptions.Item>
+              </Descriptions>
             ) : record ? (
-              <div className="agreement-detail__descriptions">
-                <div>业务单元：{record.businessUnit}</div>
-                <div>大区：{record.region}</div>
-                <div>CG：{record.cg}</div>
-                <div>经销商编码：{record.dealerCode}</div>
-                <div>经销商名称：{record.dealerName}</div>
-                <div>申请单号：{record.applicationNo}</div>
-                <div>审批节点：{record.approvalNode}</div>
-              </div>
+              <Descriptions column={2} className="agreement-detail__descriptions">
+                <Descriptions.Item label="业务单元">{record.businessUnit}</Descriptions.Item>
+                <Descriptions.Item label="大区">{record.region}</Descriptions.Item>
+                <Descriptions.Item label="CG">{record.cg}</Descriptions.Item>
+                <Descriptions.Item label="经销商编码">{record.dealerCode}</Descriptions.Item>
+                <Descriptions.Item label="经销商名称">{record.dealerName}</Descriptions.Item>
+                <Descriptions.Item label="经销商类型">{record.dealerType}</Descriptions.Item>
+                <Descriptions.Item label="L4">{record.l4}</Descriptions.Item>
+                <Descriptions.Item label="L5 / L6">{`${record.l5} / ${record.l6}`}</Descriptions.Item>
+                <Descriptions.Item label="申请单号">{record.applicationNo}</Descriptions.Item>
+                <Descriptions.Item label="审批节点">{record.approvalNode}</Descriptions.Item>
+              </Descriptions>
             ) : null}
           </Card>
 
-          <Card className="page-card" title="产品信息模块">
+          <Card
+            className="page-card"
+            title="产品信息模块"
+            extra={
+              !isView ? (
+                <Button onClick={handleOpenProductModal}>新增产品</Button>
+              ) : null
+            }
+          >
             {isView && record ? (
               <Table
                 rowKey="id"
@@ -172,74 +215,91 @@ export function InterceptionReleaseApplicationDetailPage() {
                 columns={productColumns}
                 pagination={false}
                 tableLayout="fixed"
-                scroll={{ x: 960 }}
+                scroll={{ x: 860 }}
               />
             ) : (
-              <Form.List name="products">
-                {(fields, { add, remove }) => (
-                  <Space direction="vertical" size={12} style={{ width: "100%" }}>
-                    {fields.map((field) => (
-                      <div key={field.key} className="customer-distributor-detail__editable-row">
-                        <Form.Item
-                          name={[field.name, "optionId"]}
-                          rules={[{ required: true, message: "请选择 Shape2 和产品" }]}
-                        >
-                          <Select
-                            placeholder="选择 Shape2 / 产品"
-                            options={productOptions.map((item) => ({ label: item.label, value: item.id }))}
-                            onChange={(value) => {
-                              const selected = productOptions.find((item) => item.id === value);
-                              if (!selected) {
-                                return;
-                              }
-                              form.setFieldValue(["products", field.name, "shipToCode"], selected.shipToCode);
-                              form.setFieldValue(["products", field.name, "shipToName"], selected.shipToName);
-                              form.setFieldValue(["products", field.name, "shape2"], selected.shape2);
-                              form.setFieldValue(["products", field.name, "productCode"], selected.productCode);
-                              form.setFieldValue(["products", field.name, "productName"], selected.productName);
-                            }}
-                          />
-                        </Form.Item>
-                        <Form.Item name={[field.name, "shipToCode"]}>
-                          <Input placeholder="ShipTo编码" readOnly />
-                        </Form.Item>
-                        <Form.Item name={[field.name, "shipToName"]}>
-                          <Input placeholder="ShipTo名称" readOnly />
-                        </Form.Item>
-                        <Form.Item name={[field.name, "shape2"]}>
-                          <Input placeholder="Shape2" readOnly />
-                        </Form.Item>
-                        <Form.Item name={[field.name, "productCode"]}>
-                          <Input placeholder="产品编码" readOnly />
-                        </Form.Item>
-                        <Form.Item name={[field.name, "productName"]}>
-                          <Input placeholder="产品名称" readOnly />
-                        </Form.Item>
-                        <div className="customer-distributor-detail__editable-action">
-                          <Button type="link" danger onClick={() => remove(field.name)}>
-                            删除
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                    <Button onClick={() => add({})}>新增产品</Button>
-                  </Space>
-                )}
-              </Form.List>
+              <Table
+                rowKey={(row) => row.optionId ?? `${row.shipToCode}-${row.productCode}`}
+                pagination={false}
+                tableLayout="fixed"
+                dataSource={watchedProducts}
+                columns={[
+                  { title: "ShipTo编码", dataIndex: "shipToCode", width: 160 },
+                  { title: "ShipTo名称", dataIndex: "shipToName", width: 180 },
+                  { title: "产品编码", dataIndex: "productCode", width: 160 },
+                  { title: "产品名称", dataIndex: "productName", width: 240 },
+                  {
+                    title: "操作",
+                    width: 100,
+                    fixed: "right",
+                    render: (_, row) => (
+                      <Button
+                        type="link"
+                        danger
+                        onClick={() => {
+                          form.setFieldValue(
+                            "products",
+                            watchedProducts.filter((item) => (item.optionId ?? `${item.shipToCode}-${item.productCode}`) !== (row.optionId ?? `${row.shipToCode}-${row.productCode}`)),
+                          );
+                        }}
+                      >
+                        删除
+                      </Button>
+                    ),
+                  },
+                ]}
+                scroll={{ x: 980 }}
+              />
             )}
           </Card>
 
           <Card className="page-card" title="申请信息">
             {isView && record ? (
-              <Typography.Paragraph>{record.applyReason}</Typography.Paragraph>
+              <Descriptions column={1} className="agreement-detail__descriptions">
+                <Descriptions.Item label="申请原因">{record.applyReason || "-"}</Descriptions.Item>
+                <Descriptions.Item label="申请附件">{record.attachmentName || "-"}</Descriptions.Item>
+              </Descriptions>
             ) : (
-              <Form.Item name="applyReason" label="申请原因" rules={[{ required: true, message: "请输入申请原因" }]}>
-                <Input.TextArea rows={4} placeholder="请输入解除拦截申请原因" />
-              </Form.Item>
+              <>
+                <Form.Item name="applyReason" label="申请原因">
+                  <Input.TextArea rows={4} placeholder="请输入解除拦截申请原因" />
+                </Form.Item>
+                <Form.Item name="attachmentName" label="申请附件">
+                  <Input placeholder="请输入附件名称" />
+                </Form.Item>
+              </>
             )}
           </Card>
         </Space>
       </Form>
+
+      <Modal
+        title="选择产品"
+        open={productModalOpen}
+        onCancel={() => setProductModalOpen(false)}
+        onOk={handleConfirmProducts}
+        okText="确认选择"
+        cancelText="取消"
+        width={980}
+      >
+        <Table
+          rowKey="id"
+          dataSource={productOptions}
+          pagination={false}
+          tableLayout="fixed"
+          rowSelection={{
+            selectedRowKeys: selectedProductKeys,
+            onChange: setSelectedProductKeys,
+          }}
+          columns={[
+            { title: "ShipTo编码", dataIndex: "shipToCode", width: 160 },
+            { title: "ShipTo名称", dataIndex: "shipToName", width: 200 },
+            { title: "产品编码", dataIndex: "productCode", width: 160 },
+            { title: "产品名称", dataIndex: "productName", width: 260 },
+          ]}
+          scroll={{ x: 900 }}
+        />
+      </Modal>
     </Space>
   );
 }
