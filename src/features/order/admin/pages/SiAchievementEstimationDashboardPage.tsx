@@ -1,8 +1,10 @@
-import { App, Button, Card, Form, Input, Space, Table, Tag } from "antd";
+import dayjs from "dayjs";
+import { App, Button, Card, DatePicker, Drawer, Form, Input, Space, Table, Tag } from "antd";
 import type { ColumnsType } from "antd/es/table";
+import type { Dayjs } from "dayjs";
 import { useEffect, useState } from "react";
 import { FilterPanel } from "../../../../app/components/FilterPanel";
-import type { SiAchievementEstimationRecord } from "../mocks/siAchievementEstimation.mock";
+import type { SiAchievementEstimationRecord, SiAchievementOrderDailyRecord } from "../mocks/siAchievementEstimation.mock";
 import {
   exportSiAchievementEstimations,
   listSiAchievementEstimations,
@@ -19,11 +21,49 @@ function getRateTagColor(rate: number) {
   return "warning";
 }
 
+function getOrderStatusTagColor(status: "已执行" | "未执行" | "未来订单日") {
+  if (status === "已执行") {
+    return "success";
+  }
+  if (status === "未执行") {
+    return "warning";
+  }
+  return "default";
+}
+
+function getOrderStatus(record: SiAchievementOrderDailyRecord) {
+  const today = dayjs().startOf("day");
+  const orderDay = dayjs(record.orderDate).startOf("day");
+
+  if (orderDay.isAfter(today)) {
+    return "未来订单日" as const;
+  }
+
+  return record.hasOrdered ? ("已执行" as const) : ("未执行" as const);
+}
+
+function getFutureSimulatedAmount(record: SiAchievementEstimationRecord) {
+  return record.monthlyOrderDailyData.reduce((sum, item) => {
+    return getOrderStatus(item) === "未来订单日" ? sum + item.orderAmount : sum;
+  }, 0);
+}
+
 export function SiAchievementEstimationDashboardPage() {
   const [form] = Form.useForm<SiAchievementEstimationFilters>();
   const { message } = App.useApp();
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState<SiAchievementEstimationRecord[]>([]);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [activeRecord, setActiveRecord] = useState<SiAchievementEstimationRecord>();
+
+  const currentMonth = dayjs();
+
+  function normalizeFilters(values: SiAchievementEstimationFilters & { month?: string | Dayjs }) {
+    return {
+      ...values,
+      month: typeof values.month === "string" ? values.month : values.month?.format("YYYY-MM"),
+    };
+  }
 
   async function loadData(filters: SiAchievementEstimationFilters = {}) {
     setLoading(true);
@@ -35,8 +75,22 @@ export function SiAchievementEstimationDashboardPage() {
   }
 
   useEffect(() => {
-    void loadData();
+    form.setFieldsValue({ month: currentMonth });
+    void loadData({ month: currentMonth.format("YYYY-MM") });
   }, []);
+
+  const detailColumns: ColumnsType<SiAchievementOrderDailyRecord> = [
+    { title: "订单日", dataIndex: "orderDate", width: 140 },
+    {
+      title: "状态",
+      width: 140,
+      render: (_, record) => {
+        const status = getOrderStatus(record);
+        return <Tag color={getOrderStatusTagColor(status)}>{status}</Tag>;
+      },
+    },
+    { title: "下单金额", dataIndex: "orderAmount", width: 160, render: (value: number) => `¥ ${value.toLocaleString()}` },
+  ];
 
   const columns: ColumnsType<SiAchievementEstimationRecord> = [
     { title: "业务单元", dataIndex: "businessUnit", width: 120, fixed: "left" },
@@ -50,13 +104,35 @@ export function SiAchievementEstimationDashboardPage() {
     { title: "产品名称", dataIndex: "productName", width: 220 },
     { title: "月度目标(元)", dataIndex: "monthlyTarget", width: 150, render: (value: number) => `¥ ${value.toLocaleString()}` },
     { title: "当月达成(元)", dataIndex: "monthlyAchieved", width: 150, render: (value: number) => `¥ ${value.toLocaleString()}` },
-    { title: "预估达成明细(by订单日)", dataIndex: "estimatedAchievedDetail", width: 360, ellipsis: true },
+    {
+      title: "未来模拟金额(元)",
+      key: "futureSimulatedAmount",
+      width: 160,
+      render: (_, record) => `¥ ${getFutureSimulatedAmount(record).toLocaleString()}`,
+    },
     {
       title: "预估达成率",
       dataIndex: "estimatedAchievementRate",
       width: 140,
-      fixed: "right",
       render: (value: number) => <Tag color={getRateTagColor(value)}>{`${(value * 100).toFixed(2)}%`}</Tag>,
+    },
+    {
+      title: "操作",
+      key: "actions",
+      width: 120,
+      fixed: "right",
+      render: (_, record) => (
+        <Button
+          type="link"
+          style={{ paddingInline: 0 }}
+          onClick={() => {
+            setActiveRecord(record);
+            setDetailOpen(true);
+          }}
+        >
+          查看明细
+        </Button>
+      ),
     },
   ];
 
@@ -66,6 +142,9 @@ export function SiAchievementEstimationDashboardPage() {
         <Form form={form} layout="vertical">
           <FilterPanel
             fields={[
+              <Form.Item key="month" name="month" label="月份">
+                <DatePicker picker="month" allowClear={false} style={{ width: "100%" }} />
+              </Form.Item>,
               <Form.Item key="businessUnit" name="businessUnit" label="业务单元">
                 <Input allowClear placeholder="请输入业务单元" />
               </Form.Item>,
@@ -93,13 +172,14 @@ export function SiAchievementEstimationDashboardPage() {
             ]}
             actions={
               <>
-                <Button type="primary" onClick={() => void loadData(form.getFieldsValue())}>
+                <Button type="primary" onClick={() => void loadData(normalizeFilters(form.getFieldsValue()))}>
                   查询
                 </Button>
                 <Button
                   onClick={() => {
                     form.resetFields();
-                    void loadData();
+                    form.setFieldsValue({ month: currentMonth });
+                    void loadData({ month: currentMonth.format("YYYY-MM") });
                   }}
                 >
                   重置
@@ -129,10 +209,32 @@ export function SiAchievementEstimationDashboardPage() {
           dataSource={items}
           columns={columns}
           tableLayout="fixed"
-          scroll={{ x: 2480 }}
+          scroll={{ x: 2540 }}
           pagination={{ pageSize: 8, showSizeChanger: true, showTotal: (total) => `共 ${total} 条` }}
         />
       </Card>
+
+      <Drawer
+        title={activeRecord ? `${activeRecord.productName} - 本月订单日数据` : "本月订单日数据"}
+        width={920}
+        open={detailOpen}
+        onClose={() => {
+          setDetailOpen(false);
+          setActiveRecord(undefined);
+        }}
+      >
+        {activeRecord ? (
+          <Space direction="vertical" size={16} style={{ width: "100%" }}>
+            <Table
+              rowKey={(record) => `${record.orderDate}-${record.hasOrdered}-${record.orderAmount}`}
+              columns={detailColumns}
+              dataSource={activeRecord.monthlyOrderDailyData}
+              pagination={false}
+              tableLayout="fixed"
+            />
+          </Space>
+        ) : null}
+      </Drawer>
     </Space>
   );
 }
