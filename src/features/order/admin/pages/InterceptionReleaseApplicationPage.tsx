@@ -1,11 +1,16 @@
-import { App, Button, Card, Drawer, Form, Input, Radio, Space, Table, Tag } from "antd";
+import { App, Button, Card, Drawer, Form, Input, Radio, Select, Space, Table, Tag } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FilterPanel } from "../../../../app/components/FilterPanel";
-import type { InterceptionReleaseApplicationRecord, InterceptionReleaseApplicationStatus } from "../mocks/interceptionReleaseApplication.mock";
+import type {
+  InterceptionReleaseApplicationRecord,
+  InterceptionReleaseApplicationStatus,
+  InterceptionReleaseEffectiveStatus,
+} from "../mocks/interceptionReleaseApplication.mock";
 import {
   exportInterceptionReleaseApplications,
+  invalidateInterceptionReleaseApplication,
   listInterceptEligibleDealers,
   listInterceptionReleaseApplications,
   type InterceptionDealerOption,
@@ -18,9 +23,14 @@ const statusColorMap: Record<InterceptionReleaseApplicationStatus, string> = {
   审批驳回: "error",
 };
 
+const effectiveStatusColorMap: Record<InterceptionReleaseEffectiveStatus, string> = {
+  有效: "success",
+  失效: "default",
+};
+
 export function InterceptionReleaseApplicationPage() {
   const [form] = Form.useForm<InterceptionReleaseApplicationFilters>();
-  const { message } = App.useApp();
+  const { message, modal } = App.useApp();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState<InterceptionReleaseApplicationRecord[]>([]);
@@ -56,17 +66,48 @@ export function InterceptionReleaseApplicationPage() {
       width: 120,
       render: (value: InterceptionReleaseApplicationStatus) => <Tag color={statusColorMap[value]}>{value}</Tag>,
     },
+    {
+      title: "生效状态",
+      dataIndex: "effectiveStatus",
+      width: 120,
+      render: (value: InterceptionReleaseEffectiveStatus) => <Tag color={effectiveStatusColorMap[value]}>{value}</Tag>,
+    },
     { title: "审批节点", dataIndex: "approvalNode", width: 160 },
     { title: "申请时间", dataIndex: "appliedAt", width: 180 },
     {
       title: "操作",
       key: "actions",
       fixed: "right",
-      width: 120,
+      width: 200,
       render: (_, record) => (
-        <Button type="link" onClick={() => navigate(`/admin/order/interception-release-application/detail/${record.id}?mode=view`)}>
-          查看详情
-        </Button>
+        <Space size={0} wrap>
+          <Button type="link" onClick={() => navigate(`/admin/order/interception-release-application/detail/${record.id}?mode=view`)}>
+            查看详情
+          </Button>
+          <Button
+            type="link"
+            disabled={record.effectiveStatus !== "有效"}
+            onClick={() => {
+              modal.confirm({
+                title: "确认将该申请置为失效？",
+                content: "失效后该申请的生效状态会更新为失效。",
+                okText: "确认失效",
+                cancelText: "取消",
+                onOk: async () => {
+                  invalidateInterceptionReleaseApplication({
+                    id: record.id,
+                    reviewerAccount: "admin",
+                    reviewerName: "管理员",
+                  });
+                  void message.success("解除拦截申请已置为失效。");
+                  await loadData(form.getFieldsValue());
+                },
+              });
+            }}
+          >
+            置为失效
+          </Button>
+        </Space>
       ),
     },
   ];
@@ -104,6 +145,16 @@ export function InterceptionReleaseApplicationPage() {
                   ]}
                   optionType="button"
                   buttonStyle="solid"
+                />
+              </Form.Item>,
+              <Form.Item key="effectiveStatus" name="effectiveStatus" label="生效状态">
+                <Select
+                  allowClear
+                  placeholder="请选择"
+                  options={[
+                    { label: "有效", value: "有效" },
+                    { label: "失效", value: "失效" },
+                  ]}
                 />
               </Form.Item>,
             ]}
@@ -154,7 +205,7 @@ export function InterceptionReleaseApplicationPage() {
           dataSource={items}
           columns={columns}
           tableLayout="fixed"
-          scroll={{ x: 1840 }}
+          scroll={{ x: 2060 }}
           pagination={{ pageSize: 8, showSizeChanger: true, showTotal: (total) => `共 ${total} 条` }}
         />
       </Card>
@@ -196,9 +247,6 @@ export function InterceptionReleaseApplicationPage() {
           columns={[
             { title: "经销商编码", dataIndex: "dealerCode", width: 160 },
             { title: "经销商名称", dataIndex: "dealerName", width: 240 },
-            { title: "L4", dataIndex: "l4", width: 100 },
-            { title: "L5", dataIndex: "l5", width: 100 },
-            { title: "L6", dataIndex: "l6", width: 100 },
             { title: "业务单元", dataIndex: "businessUnit", width: 120 },
             { title: "大区", dataIndex: "region", width: 140 },
             { title: "CG", dataIndex: "cg", width: 100 },
@@ -214,7 +262,7 @@ export function InterceptionReleaseApplicationPage() {
               ),
             },
           ]}
-          scroll={{ x: 1280 }}
+          scroll={{ x: 980 }}
         />
       </Drawer>
     </Space>
