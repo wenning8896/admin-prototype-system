@@ -49,7 +49,11 @@ function getFutureSimulatedAmount(record: SiAchievementEstimationRecord) {
 }
 
 export function SiAchievementEstimationDashboardPage() {
-  const [form] = Form.useForm<SiAchievementEstimationFilters>();
+  type SiAchievementEstimationFormValues = Omit<SiAchievementEstimationFilters, "month"> & {
+    month?: Dayjs;
+  };
+
+  const [form] = Form.useForm<SiAchievementEstimationFormValues>();
   const { message } = App.useApp();
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState<SiAchievementEstimationRecord[]>([]);
@@ -58,10 +62,10 @@ export function SiAchievementEstimationDashboardPage() {
 
   const currentMonth = dayjs();
 
-  function normalizeFilters(values: SiAchievementEstimationFilters & { month?: string | Dayjs }) {
+  function normalizeFilters(values: SiAchievementEstimationFormValues): SiAchievementEstimationFilters {
     return {
       ...values,
-      month: typeof values.month === "string" ? values.month : values.month?.format("YYYY-MM"),
+      month: values.month?.format("YYYY-MM"),
     };
   }
 
