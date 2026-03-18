@@ -69,6 +69,18 @@ export type AdminOrderPayerOption = {
   paymentInfo: string;
 };
 
+export type AdminOrderDealerOption = {
+  dealerCode: string;
+  dealerName: string;
+  l4: string;
+  l5: string;
+  l6: string;
+  region: string;
+  cg: string;
+  businessUnit: string;
+  dealerType: string;
+};
+
 export type AdminOrderRecord = {
   id: string;
   tabKey: AdminOrderTabKey;

@@ -218,20 +218,22 @@ export function AdminOrderDetailPage() {
     );
   }
 
+  const currentRecord = record;
+
   async function handleSave(action: "draft" | "submit") {
     const values = await form.validateFields();
     const payload = {
-      id: record.id,
+      id: currentRecord.id,
       orderNo: values.orderNo,
       parentOrderNo: values.parentOrderNo,
-      soldToCode: record.soldToCode,
+      soldToCode: currentRecord.soldToCode,
       selectedShipToId: values.selectedShipToId,
-      warehouseAddress: selectedShipTo?.address ?? record.warehouseAddress,
+      warehouseAddress: selectedShipTo?.address ?? currentRecord.warehouseAddress,
       addressRemark: values.addressRemark,
       selectedPayerId: values.selectedPayerId,
       paymentInfo: values.paymentInfo,
       submitTo: values.submitTo,
-      orderSubmitDate: record.orderSubmitDate,
+      orderSubmitDate: currentRecord.orderSubmitDate,
       expectedDeliveryDate: values.expectedDeliveryDate?.format("YYYY-MM-DD"),
       expectedArrivalDate: values.expectedDeliveryDate?.add(3, "day").format("YYYY-MM-DD"),
       useArAmount: values.useArAmount ?? 0,
@@ -291,7 +293,7 @@ export function AdminOrderDetailPage() {
       if (current.length === 0) {
         return [
           {
-            ...buildManualDraftProduct(record, 1),
+            ...buildManualDraftProduct(currentRecord, 1),
             nestleCode: "12988001",
             quantity: 10,
           },
@@ -306,7 +308,7 @@ export function AdminOrderDetailPage() {
   }
 
   function handleAddManualProduct() {
-    setManualOrderProducts((current) => [...current, buildManualDraftProduct(record, current.length + 1)]);
+    setManualOrderProducts((current) => [...current, buildManualDraftProduct(currentRecord, current.length + 1)]);
   }
 
   function updateManualProduct(id: string, patch: Partial<AdminOrderProductItem>) {

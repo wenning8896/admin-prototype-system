@@ -3,10 +3,9 @@ import type { ColumnsType } from "antd/es/table";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FilterPanel } from "../../../../app/components/FilterPanel";
-import type { AdminOrderRecord, AdminOrderStatus, AdminOrderTabKey } from "../mocks/orderList.mock";
+import type { AdminOrderDealerOption, AdminOrderRecord, AdminOrderStatus, AdminOrderTabKey } from "../mocks/orderList.mock";
 import {
   type AdminOrderDealerFilters,
-  type AdminOrderDealerOption,
   createDraftAdminOrder,
   exportAdminOrderList,
   exportAdminOrderPdf,
