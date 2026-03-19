@@ -1,4 +1,4 @@
-import { App, Button, Card, Form, Input, Select, Space, Table, Tag } from "antd";
+import { App, Button, Card, Checkbox, Form, Input, Select, Space, Table, Tag } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -9,7 +9,6 @@ import {
   canClose,
   canRenewOrSupplement,
   exportHospitalContractList,
-  hasPendingContractWorkflow,
   listHospitalContracts,
   triggerContractClose,
   type HospitalContractFilters,
@@ -42,18 +41,47 @@ export function ContractListPage() {
   }, []);
 
   const columns: ColumnsType<HospitalContractRecord> = [
-    { title: "合同编号", dataIndex: "contractNo", width: 180, fixed: "left" },
-    { title: "DMS医院编码", dataIndex: "dmsHospitalCode", width: 180 },
+    { title: "合同ID", dataIndex: "contractId", width: 220, fixed: "left" },
+    { title: "经销商名称", dataIndex: "dealerName", width: 240, fixed: "left" },
     { title: "DMS医院名称", dataIndex: "dmsHospitalName", width: 220 },
-    { title: "经销商编码", dataIndex: "dealerCode", width: 160 },
-    { title: "经销商名称", dataIndex: "dealerName", width: 220 },
     { title: "大区", dataIndex: "region", width: 120 },
     { title: "CG", dataIndex: "cg", width: 100 },
     { title: "省份", dataIndex: "province", width: 120 },
+    { title: "经销商编码", dataIndex: "dealerCode", width: 160 },
+    { title: "DMS医院编码", dataIndex: "dmsHospitalCode", width: 180 },
+    { title: "DMS医院合作状态", dataIndex: "dmsHospitalCooperationStatus", width: 140, render: (value: string) => <Tag color={value === "Y" ? "success" : "default"}>{value}</Tag> },
+    { title: "医院地址", dataIndex: "dmsHospitalAddress", width: 260 },
+    { title: "合同形式", dataIndex: "contractForm", width: 220 },
+    { title: "转移类型", dataIndex: "transferType", width: 220 },
+    { title: "科室合同签署方类型", dataIndex: "contractDepartmentType", width: 180 },
+    { title: "合同签署方", dataIndex: "signatoryFullName", width: 220 },
+    { title: "医院收货地址", dataIndex: "deliveryAddress", width: 260 },
+    { title: "合同盖章名称", dataIndex: "sealName", width: 220 },
+    { title: "付款账号", dataIndex: "paymentAccount", width: 180 },
+    { title: "付款账号名称", dataIndex: "accountHolderName", width: 220 },
+    { title: "付款开户行", dataIndex: "bankName", width: 220 },
     { title: "合同签署时间", dataIndex: "signedAt", width: 150 },
     { title: "合同到期时间", dataIndex: "expiredAt", width: 150 },
-    { title: "最近提交流程", dataIndex: "latestActionType", width: 140, render: (value?: string) => value ?? "-" },
+    { title: "延期类型", dataIndex: "renewalType", width: 140 },
+    { title: "已延期时间", dataIndex: "renewedDuration", width: 140 },
     { title: "合同存续状态", dataIndex: "lifeStatus", width: 140, render: (value: string) => <Tag color={lifeColorMap[value]}>{value}</Tag> },
+    { title: "三方公司成立时间", dataIndex: "thirdPartyCompanyEstablishedAt", width: 160 },
+    { title: "医院指定三方公司营业执照和食品经营资质", dataIndex: "thirdPartyCompanyQualification", width: 300 },
+    { title: "医院指定第三方采购授权方式", dataIndex: "authorizationMode", width: 240 },
+    { title: "上传三方公司医院授权书/隶属关系证明", dataIndex: "authorizationProofAttachmentName", width: 280, render: (value?: string) => value ?? "-" },
+    { title: "医院授权书生效时间", dataIndex: "authorizationEffectiveAt", width: 160 },
+    { title: "医院授权书失效时间", dataIndex: "authorizationExpiredAt", width: 160 },
+    { title: "医院授权第三方采购公司的指定收货人", dataIndex: "authorizedReceiver", width: 260 },
+    { title: "签署合同医院ETMS-ID", dataIndex: "signHospitalEtmsId", width: 180 },
+    { title: "使用产品医院ETMS-ID", dataIndex: "useProductEtmsId", width: 180 },
+    { title: "医院指定收货人1", width: 160, render: (_, record) => record.receivers[0]?.receiverName ?? "-" },
+    { title: "医院指定收货人ID-1", width: 180, render: (_, record) => record.receivers[0]?.receiverCode ?? "-" },
+    { title: "医院指定收货人2", width: 160, render: (_, record) => record.receivers[1]?.receiverName ?? "-" },
+    { title: "医院指定收货人ID-2", width: 180, render: (_, record) => record.receivers[1]?.receiverCode ?? "-" },
+    { title: "医院指定收货人3", width: 160, render: (_, record) => record.receivers[2]?.receiverName ?? "-" },
+    { title: "医院指定收货人ID-3", width: 180, render: (_, record) => record.receivers[2]?.receiverCode ?? "-" },
+    { title: "医院指定收货人4", width: 160, render: (_, record) => record.receivers[3]?.receiverName ?? "-" },
+    { title: "医院指定收货人ID-4", width: 180, render: (_, record) => record.receivers[3]?.receiverCode ?? "-" },
     {
       title: "操作",
       key: "actions",
@@ -64,7 +92,6 @@ export function ContractListPage() {
           <Button type="link" onClick={() => navigate(`/admin/contract/contract-list/detail/${record.id}`, { state: { mode: "view" } })}>
             查看
           </Button>
-          {hasPendingContractWorkflow(record) ? <Tag color="processing">{record.pendingAction}审批中</Tag> : null}
           {canRenewOrSupplement(record) ? (
             <>
               <Button type="link" onClick={() => navigate(`/admin/contract/contract-list/detail/${record.id}`, { state: { mode: "renew" } })}>
@@ -80,11 +107,20 @@ export function ContractListPage() {
               type="link"
               danger
               onClick={() => {
-                modal.confirm({
+                let confirmModal: ReturnType<typeof modal.confirm>;
+                confirmModal = modal.confirm({
                   title: "确认关闭合同？",
-                  content: "确认发起关闭后，合同将直接关闭。关闭后的合同无法再进行续签、补充SKU等操作。",
+                  content: (
+                    <Space direction="vertical" size={12}>
+                      <span>确认发起关闭后，合同将直接关闭。关闭后的合同无法再进行续签、补充SKU等操作。</span>
+                      <Checkbox onChange={(event) => confirmModal.update({ okButtonProps: { disabled: !event.target.checked } })}>
+                        我已阅读并确认关闭后不可恢复
+                      </Checkbox>
+                    </Space>
+                  ),
                   okText: "确认关闭",
                   cancelText: "取消",
+                  okButtonProps: { disabled: true },
                   onOk: async () => {
                     await triggerContractClose(record.id, {
                       name: user?.name ?? "管理员",
@@ -153,12 +189,11 @@ export function ContractListPage() {
         className="page-card"
         extra={
           <Space>
-            <Button onClick={() => { exportHospitalContractList(items, "管理端合同列表"); void message.success("合同列表已导出为 .xlsx 文件。"); }}>
-              导出
-            </Button>
-            <Button onClick={() => void message.info("导入能力会在后续按模板字段接入。")}>导入</Button>
             <Button type="primary" onClick={() => navigate("/admin/contract/contract-list/detail/new", { state: { mode: "create" } })}>
               新建合同
+            </Button>
+            <Button onClick={() => { exportHospitalContractList(items, "管理端合同列表"); void message.success("合同列表已导出为 .xlsx 文件。"); }}>
+              导出
             </Button>
           </Space>
         }
@@ -169,7 +204,7 @@ export function ContractListPage() {
           dataSource={items}
           columns={columns}
           tableLayout="fixed"
-          scroll={{ x: 2240 }}
+          scroll={{ x: 6880 }}
           pagination={{ pageSize: 8, showSizeChanger: true, showTotal: (total) => `共 ${total} 条` }}
         />
       </Card>

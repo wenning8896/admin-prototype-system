@@ -77,6 +77,8 @@ export async function listDealerSignReceiptRecords(filters: SignReceiptFilters =
         dealerName: contract.dealerName,
         dmsHospitalCode: contract.dmsHospitalCode,
         dmsHospitalName: contract.dmsHospitalName,
+        procurementType: contract.contractForm === "公对公合同-医院授权第三方" ? "三方" : "直采",
+        contractLifeStatus: contract.lifeStatus,
         receiverName: contract.receivers[0]?.receiverName ?? "-",
         receiverId: contract.receivers[0]?.receiverCode ?? "-",
         status: "待上传" as const,

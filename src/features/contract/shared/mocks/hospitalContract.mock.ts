@@ -39,6 +39,9 @@ export type ContractVersionRecord = {
 
 export type HospitalContractRecord = {
   id: string;
+  contractId: string;
+  sourceContractId?: string;
+  removedFromApproval?: boolean;
   contractNo: string;
   approvalStatus: ContractApprovalStatus;
   lifeStatus: ContractLifeStatus;
@@ -72,6 +75,12 @@ export type HospitalContractRecord = {
   renewalType: string;
   autoRenewYears: number;
   renewedDuration: string;
+  thirdPartyCompanyEstablishedAt: string;
+  thirdPartyCompanyQualification: string;
+  thirdPartyBusinessLicenseName: string;
+  thirdPartyFoodQualificationName: string;
+  hospitalAuthorizationLetterName: string;
+  authorizationProofAttachmentName: string;
   contractAttachmentName: string;
   thirdPartyEffectiveAt: string;
   authorizationMode: string;
@@ -112,6 +121,12 @@ export type HospitalContractDetailValues = {
   renewalType: string;
   autoRenewYears: number;
   renewedDuration: string;
+  thirdPartyCompanyEstablishedAt: string;
+  thirdPartyCompanyQualification: string;
+  thirdPartyBusinessLicenseName: string;
+  thirdPartyFoodQualificationName: string;
+  hospitalAuthorizationLetterName: string;
+  authorizationProofAttachmentName: string;
   contractAttachmentName: string;
   thirdPartyEffectiveAt: string;
   authorizationMode: string;
@@ -127,6 +142,8 @@ export const contractApprovalNodeSequence = ["区域经理审批", "法务审批
 export const contractSeedRecords: HospitalContractRecord[] = [
   {
     id: "contract-1",
+    contractId: "CONTRACT-0001",
+    removedFromApproval: false,
     contractNo: "HT-202603-001",
     approvalStatus: "审核通过",
     lifeStatus: "有效",
@@ -158,6 +175,12 @@ export const contractSeedRecords: HospitalContractRecord[] = [
     renewalType: "自动延期",
     autoRenewYears: 1,
     renewedDuration: "0 次",
+    thirdPartyCompanyEstablishedAt: "2021-06-18",
+    thirdPartyCompanyQualification: "营业执照、食品经营许可证齐全",
+    thirdPartyBusinessLicenseName: "上海第一人民医院指定三方营业执照.pdf",
+    thirdPartyFoodQualificationName: "上海第一人民医院指定三方食品经营许可证.pdf",
+    hospitalAuthorizationLetterName: "上海第一人民医院第三方授权书.pdf",
+    authorizationProofAttachmentName: "上海第一人民医院第三方授权书.pdf",
     contractAttachmentName: "上海第一人民医院院采合同_V1.pdf",
     thirdPartyEffectiveAt: "2026-03-01",
     authorizationMode: "医院授权第三方",
@@ -229,6 +252,8 @@ export const contractSeedRecords: HospitalContractRecord[] = [
   },
   {
     id: "contract-2",
+    contractId: "CONTRACT-0002",
+    removedFromApproval: false,
     contractNo: "HT-202603-002",
     approvalStatus: "审核中",
     lifeStatus: "有效",
@@ -262,6 +287,12 @@ export const contractSeedRecords: HospitalContractRecord[] = [
     renewalType: "无自动延期",
     autoRenewYears: 0,
     renewedDuration: "0 次",
+    thirdPartyCompanyEstablishedAt: "2020-09-08",
+    thirdPartyCompanyQualification: "营业执照齐全，食品经营许可证待年审",
+    thirdPartyBusinessLicenseName: "北京儿童医院指定三方营业执照.pdf",
+    thirdPartyFoodQualificationName: "北京儿童医院指定三方食品经营许可证.pdf",
+    hospitalAuthorizationLetterName: "北京儿童医院采购授权书.pdf",
+    authorizationProofAttachmentName: "北京儿童医院采购授权书.pdf",
     contractAttachmentName: "北京儿童医院院采合同_草稿.pdf",
     thirdPartyEffectiveAt: "2026-03-05",
     authorizationMode: "医院授权第三方",
@@ -298,6 +329,8 @@ export const contractSeedRecords: HospitalContractRecord[] = [
   },
   {
     id: "contract-3",
+    contractId: "CONTRACT-0003",
+    removedFromApproval: false,
     contractNo: "HT-202603-003",
     approvalStatus: "审核驳回",
     lifeStatus: "有效",
@@ -329,6 +362,12 @@ export const contractSeedRecords: HospitalContractRecord[] = [
     renewalType: "自动延期",
     autoRenewYears: 1,
     renewedDuration: "0 次",
+    thirdPartyCompanyEstablishedAt: "2022-04-15",
+    thirdPartyCompanyQualification: "营业执照齐全，食品经营资质补传中",
+    thirdPartyBusinessLicenseName: "广州妇儿医院指定三方营业执照.pdf",
+    thirdPartyFoodQualificationName: "广州妇儿医院指定三方食品经营资质.pdf",
+    hospitalAuthorizationLetterName: "广州妇儿医院隶属关系证明.pdf",
+    authorizationProofAttachmentName: "广州妇儿医院隶属关系证明.pdf",
     contractAttachmentName: "广州妇儿医院院采合同_补件版.pdf",
     thirdPartyEffectiveAt: "2026-03-08",
     authorizationMode: "医院授权第三方",
@@ -365,6 +404,8 @@ export const contractSeedRecords: HospitalContractRecord[] = [
   },
   {
     id: "contract-4",
+    contractId: "CONTRACT-0004",
+    removedFromApproval: false,
     contractNo: "HT-202512-018",
     approvalStatus: "审核通过",
     lifeStatus: "无效",
@@ -396,6 +437,12 @@ export const contractSeedRecords: HospitalContractRecord[] = [
     renewalType: "无自动延期",
     autoRenewYears: 0,
     renewedDuration: "1 次",
+    thirdPartyCompanyEstablishedAt: "2019-12-01",
+    thirdPartyCompanyQualification: "营业执照、食品经营许可证齐全",
+    thirdPartyBusinessLicenseName: "苏州大学附属医院指定三方营业执照.pdf",
+    thirdPartyFoodQualificationName: "苏州大学附属医院指定三方食品经营许可证.pdf",
+    hospitalAuthorizationLetterName: "苏州大学附属医院第三方采购授权.pdf",
+    authorizationProofAttachmentName: "苏州大学附属医院第三方采购授权.pdf",
     contractAttachmentName: "苏州大学附属医院续签合同.pdf",
     thirdPartyEffectiveAt: "2025-12-10",
     authorizationMode: "医院授权第三方",
@@ -456,6 +503,116 @@ export const contractSeedRecords: HospitalContractRecord[] = [
         createdAt: "2026-02-20 19:00",
         operatorName: "徐衡",
         exportFileName: "HT-202512-018_V2.0.pdf",
+      },
+    ],
+  },
+  {
+    id: "contract-5",
+    contractId: "CONTRACT-0005",
+    removedFromApproval: false,
+    contractNo: "HT-202603-005",
+    approvalStatus: "审核通过",
+    lifeStatus: "有效",
+    latestActionType: "新建合同",
+    submitterName: "陈雪",
+    submitterAccount: "dealer002",
+    dmsHospitalCode: "HSP-DMS-005",
+    dmsHospitalName: "盐城市艾琪儿妇产医院有限公司",
+    dmsHospitalCooperationStatus: "N",
+    signHospitalEtmsId: "ETMS-S-005",
+    useProductEtmsId: "ETMS-U-005",
+    dealerCode: "D5060011",
+    dealerName: "广州市康盈贸易有限公司",
+    region: "华东大区",
+    cg: "苏北",
+    province: "江苏省",
+    dmsHospitalAddress: "江苏省盐城市亭湖区希望大道 88 号",
+    deliveryAddress: "江苏省盐城市亭湖区门诊楼收货点",
+    contractForm: "公对公合同-医院公章",
+    transferType: "公对公转账（医院）",
+    contractDepartmentType: "新生儿科",
+    signatoryFullName: "盐城市艾琪儿妇产医院有限公司",
+    sealName: "盐城市艾琪儿妇产医院合同章",
+    paymentAccount: "3201000099887766",
+    accountHolderName: "盐城市艾琪儿妇产医院有限公司",
+    bankName: "中国农业银行盐城分行",
+    signedAt: "2026-03-12",
+    expiredAt: "2027-03-11",
+    renewalType: "无自动延期",
+    autoRenewYears: 0,
+    renewedDuration: "0 次",
+    thirdPartyCompanyEstablishedAt: "2021-05-20",
+    thirdPartyCompanyQualification: "营业执照齐全，食品经营资质待补充",
+    thirdPartyBusinessLicenseName: "盐城市艾琪儿妇产医院指定三方营业执照.pdf",
+    thirdPartyFoodQualificationName: "盐城市艾琪儿妇产医院指定三方食品经营资质.pdf",
+    hospitalAuthorizationLetterName: "盐城市艾琪儿妇产医院第三方授权书.pdf",
+    authorizationProofAttachmentName: "盐城市艾琪儿妇产医院第三方授权书.pdf",
+    contractAttachmentName: "盐城市艾琪儿妇产医院院采合同.pdf",
+    thirdPartyEffectiveAt: "2026-03-12",
+    authorizationMode: "医院授权第三方",
+    authorizationEffectiveAt: "2026-03-12",
+    authorizationExpiredAt: "2027-03-11",
+    authorizedReceiver: "顾医生",
+    receivers: [
+      { id: "receiver-6", receiverName: "顾医生", receiverCode: "RCV-006" },
+      { id: "receiver-7", receiverName: "谢老师", receiverCode: "RCV-007" },
+    ],
+    products: [
+      { id: "product-6", productCode: "P-4001", productName: "启赋蕴淳 1 段", suggestedPrice: 348, price: 348 },
+      { id: "product-7", productCode: "P-5001", productName: "启赋未来 4 段", suggestedPrice: 288, price: 288 },
+    ],
+    createdAt: "2026-03-12 09:30",
+    updatedAt: "2026-03-13 16:01",
+    approvalHistory: [
+      {
+        id: "history-13",
+        nodeName: "经销商提交",
+        decision: "提交申请",
+        roleLabel: "经销商",
+        operatorName: "陈雪",
+        account: "dealer002",
+        actedAt: "2026-03-12 09:30",
+        remark: "提交新建合同。",
+      },
+      {
+        id: "history-14",
+        nodeName: "区域经理审批",
+        decision: "审批通过",
+        roleLabel: "管理员",
+        operatorName: "刘波",
+        account: "admin",
+        actedAt: "2026-03-12 13:10",
+        remark: "业务信息审核通过。",
+      },
+      {
+        id: "history-15",
+        nodeName: "法务审批",
+        decision: "审批通过",
+        roleLabel: "管理员",
+        operatorName: "宋洁",
+        account: "admin",
+        actedAt: "2026-03-13 10:20",
+        remark: "法务审核通过。",
+      },
+      {
+        id: "history-16",
+        nodeName: "合同管理员审批",
+        decision: "审批通过",
+        roleLabel: "管理员",
+        operatorName: "徐衡",
+        account: "admin",
+        actedAt: "2026-03-13 16:01",
+        remark: "合同生效。",
+      },
+    ],
+    versions: [
+      {
+        id: "version-3",
+        versionLabel: "V1.0",
+        actionType: "新建合同",
+        createdAt: "2026-03-13 16:01",
+        operatorName: "徐衡",
+        exportFileName: "HT-202603-005_V1.0.pdf",
       },
     ],
   },

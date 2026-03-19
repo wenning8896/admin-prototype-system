@@ -1,4 +1,4 @@
-import { App, Button, Card, Form, Input, Select, Space, Table, Tag } from "antd";
+import { App, Button, Card, Checkbox, Form, Input, Select, Space, Table, Tag } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -9,8 +9,7 @@ import {
   canClose,
   canRenewOrSupplement,
   exportHospitalContractList,
-  hasPendingContractWorkflow,
-  listHospitalContracts,
+  listDealerHospitalContracts,
   triggerContractClose,
   type HospitalContractFilters,
 } from "../../shared/services/hospitalContract.mock-service";
@@ -26,7 +25,7 @@ export function DealerContractListPage() {
   async function loadData(filters: HospitalContractFilters = {}) {
     setLoading(true);
     try {
-      setItems(await listHospitalContracts(filters, "dealer"));
+      setItems(await listDealerHospitalContracts(user?.account ?? "dealer", filters));
     } finally {
       setLoading(false);
     }
@@ -58,7 +57,6 @@ export function DealerContractListPage() {
           <Button type="link" onClick={() => navigate(`/dealer/contract/dealer-contract-list/detail/${record.id}`, { state: { mode: "view" } })}>
             查看
           </Button>
-          {hasPendingContractWorkflow(record) ? <Tag color="processing">{record.pendingAction}审批中</Tag> : null}
           {canRenewOrSupplement(record) ? (
             <>
               <Button type="link" onClick={() => navigate(`/dealer/contract/dealer-contract-list/detail/${record.id}`, { state: { mode: "renew" } })}>
@@ -74,9 +72,18 @@ export function DealerContractListPage() {
               type="link"
               danger
               onClick={() => {
-                modal.confirm({
+                let confirmModal: ReturnType<typeof modal.confirm>;
+                confirmModal = modal.confirm({
                   title: "确认关闭合同？",
-                  content: "确认发起关闭后，合同将直接关闭。关闭后的合同无法再进行续签、补充SKU等操作。",
+                  content: (
+                    <Space direction="vertical" size={12}>
+                      <span>确认发起关闭后，合同将直接关闭。关闭后的合同无法再进行续签、补充SKU等操作。</span>
+                      <Checkbox onChange={(event) => confirmModal.update({ okButtonProps: { disabled: !event.target.checked } })}>
+                        我已阅读并确认关闭后不可恢复
+                      </Checkbox>
+                    </Space>
+                  ),
+                  okButtonProps: { disabled: true },
                   onOk: async () => {
                     await triggerContractClose(record.id, {
                       name: user?.name ?? "经销商",
@@ -106,9 +113,6 @@ export function DealerContractListPage() {
               <Form.Item key="contractNo" name="contractNo" label="合同编号">
                 <Input allowClear placeholder="请输入合同编号" />
               </Form.Item>,
-              <Form.Item key="dealerCode" name="dealerCode" label="经销商编码">
-                <Input allowClear placeholder="请输入经销商编码" />
-              </Form.Item>,
               <Form.Item key="hospitalCode" name="hospitalCode" label="DMS医院编码">
                 <Input allowClear placeholder="请输入DMS医院编码" />
               </Form.Item>,
@@ -134,9 +138,8 @@ export function DealerContractListPage() {
         className="page-card"
         extra={
           <Space>
-            <Button onClick={() => { exportHospitalContractList(items, "经销商端合同列表"); void message.success("合同列表已导出为 .xlsx 文件。"); }}>导出</Button>
-            <Button onClick={() => void message.info("导入能力会在后续按合同模板字段接入。")}>导入</Button>
             <Button type="primary" onClick={() => navigate("/dealer/contract/dealer-contract-list/detail/new", { state: { mode: "create" } })}>新建合同</Button>
+            <Button onClick={() => { exportHospitalContractList(items, "经销商端合同列表"); void message.success("合同列表已导出为 .xlsx 文件。"); }}>导出</Button>
           </Space>
         }
       >
