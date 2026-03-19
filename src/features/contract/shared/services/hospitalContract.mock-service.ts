@@ -32,6 +32,14 @@ type ContractActor = {
   roleLabel: string;
 };
 
+export type DealerProfile = {
+  dealerCode: string;
+  dealerName: string;
+  region: string;
+  cg: string;
+  province: string;
+};
+
 function wait() {
   return new Promise((resolve) => window.setTimeout(resolve, 180));
 }
@@ -99,6 +107,33 @@ function persistMergedRecord(nextRecord: HospitalContractRecord) {
   persistStoredRecords([nextRecord, ...stored]);
 }
 
+function buildContractId() {
+  return `CONTRACT-${dayjs().format("YYYYMMDDHHmmss")}-${Math.floor(Math.random() * 900 + 100)}`;
+}
+
+export function getDealerProfile(account?: string): DealerProfile {
+  const merged = getMergedRecords();
+  const exactMatch = merged.find((item) => item.submitterAccount === account);
+  if (exactMatch) {
+    return {
+      dealerCode: exactMatch.dealerCode,
+      dealerName: exactMatch.dealerName,
+      region: exactMatch.region,
+      cg: exactMatch.cg,
+      province: exactMatch.province,
+    };
+  }
+
+  const defaultDealer = merged.find((item) => item.dealerCode === "D1917070") ?? merged[0];
+  return {
+    dealerCode: defaultDealer?.dealerCode ?? "",
+    dealerName: defaultDealer?.dealerName ?? "",
+    region: defaultDealer?.region ?? "",
+    cg: defaultDealer?.cg ?? "",
+    province: defaultDealer?.province ?? "",
+  };
+}
+
 function buildVersionLabel(record: HospitalContractRecord) {
   const version = record.versions.length + 1;
   return `V${version}.0`;
@@ -134,6 +169,9 @@ function toRecord(values: HospitalContractDetailValues, actor: ContractActor, ex
 
   return {
     id: existing?.id ?? `contract-${Date.now()}`,
+    contractId: existing?.contractId ?? existing?.id ?? buildContractId(),
+    sourceContractId: existing?.sourceContractId,
+    removedFromApproval: existing?.removedFromApproval ?? false,
     contractNo: existing?.contractNo ?? `HT-${dayjs().format("YYYYMM")}-${String(Math.floor(Math.random() * 900) + 100)}`,
     approvalStatus: existing?.approvalStatus ?? "草稿",
     lifeStatus: existing?.lifeStatus ?? "有效",
@@ -167,6 +205,12 @@ function toRecord(values: HospitalContractDetailValues, actor: ContractActor, ex
     renewalType: values.renewalType,
     autoRenewYears: values.autoRenewYears,
     renewedDuration: values.renewedDuration,
+    thirdPartyCompanyEstablishedAt: values.thirdPartyCompanyEstablishedAt,
+    thirdPartyCompanyQualification: [values.thirdPartyBusinessLicenseName, values.thirdPartyFoodQualificationName].filter(Boolean).join(" / "),
+    thirdPartyBusinessLicenseName: values.thirdPartyBusinessLicenseName,
+    thirdPartyFoodQualificationName: values.thirdPartyFoodQualificationName,
+    hospitalAuthorizationLetterName: values.hospitalAuthorizationLetterName,
+    authorizationProofAttachmentName: values.hospitalAuthorizationLetterName,
     contractAttachmentName: values.contractAttachmentName,
     thirdPartyEffectiveAt: values.thirdPartyEffectiveAt,
     authorizationMode: values.authorizationMode,
@@ -203,6 +247,10 @@ export async function listHospitalContracts(filters: HospitalContractFilters = {
   const submitterName = filters.submitterName?.trim().toLowerCase();
 
   return getMergedRecords().filter((item) => {
+    if (item.approvalStatus !== "审核通过" || item.sourceContractId) {
+      return false;
+    }
+
     if (role === "dealer" && !item.dealerCode.startsWith("D")) {
       return true;
     }
@@ -225,6 +273,17 @@ export async function listHospitalContracts(filters: HospitalContractFilters = {
       matchesLifeStatus
     );
   });
+}
+
+export async function listDealerHospitalContracts(dealerAccount: string, filters: HospitalContractFilters = {}) {
+  const dealerProfile = getDealerProfile(dealerAccount);
+  return listHospitalContracts(
+    {
+      ...filters,
+      dealerCode: dealerProfile.dealerCode,
+    },
+    "all",
+  );
 }
 
 export async function getHospitalContractById(id: string) {
@@ -251,8 +310,20 @@ export async function submitHospitalContractAction(
 ) {
   await wait();
   const existing = existingId ? getMergedRecords().find((item) => item.id === existingId) : undefined;
-  const next = toRecord(values, actor, existing);
+  const baseRecord = toRecord(values, actor, existing);
+  const submissionId = existing?.approvalStatus === "审核通过" ? `contract-submission-${Date.now()}` : baseRecord.id;
+  const next: HospitalContractRecord = {
+    ...baseRecord,
+    id: submissionId,
+    contractId: existing?.contractId ?? baseRecord.contractId,
+    sourceContractId: existing?.approvalStatus === "审核通过" ? existing.id : existing?.sourceContractId,
+    createdAt: dayjs().format("YYYY-MM-DD HH:mm"),
+    updatedAt: dayjs().format("YYYY-MM-DD HH:mm"),
+    approvalHistory: existing?.approvalStatus === "审核通过" ? [...existing.approvalHistory] : (existing?.approvalHistory ?? []),
+    versions: existing?.versions ?? [],
+  };
   next.approvalStatus = "审核中";
+  next.removedFromApproval = false;
   next.pendingAction = actionType;
   next.latestActionType = actionType;
   next.currentApprovalNode = contractApprovalNodeSequence[0];
@@ -332,18 +403,21 @@ export async function reviewHospitalContract(params: {
     next.approvalStatus = "审核驳回";
     next.currentApprovalNode = undefined;
     next.pendingAction = undefined;
+    next.removedFromApproval = false;
     persistMergedRecord(next);
     return next;
   }
 
   if (nextNode) {
     next.currentApprovalNode = nextNode;
+    next.removedFromApproval = false;
     persistMergedRecord(next);
     return next;
   }
 
   next.approvalStatus = "审核通过";
   next.currentApprovalNode = undefined;
+  next.pendingAction = undefined;
 
   if (record.pendingAction === "关闭合同") {
     next.lifeStatus = "无效";
@@ -356,13 +430,97 @@ export async function reviewHospitalContract(params: {
   }
 
   next.versions = [...record.versions, buildVersionRecord(record, record.pendingAction, params.actor.name)];
-  next.pendingAction = undefined;
+
+  if (!record.sourceContractId) {
+    next.sourceContractId = undefined;
+    next.removedFromApproval = true;
+    persistMergedRecord(next);
+    return next;
+  }
+
+  const sourceRecord = getMergedRecords().find((item) => item.id === record.sourceContractId);
+  const effectiveRecord: HospitalContractRecord = {
+    ...next,
+    id: sourceRecord?.id ?? record.sourceContractId,
+    contractId: sourceRecord?.contractId ?? record.contractId,
+    sourceContractId: undefined,
+    createdAt: sourceRecord?.createdAt ?? record.createdAt,
+    removedFromApproval: true,
+  };
+
+  persistMergedRecord(next);
+  persistMergedRecord(effectiveRecord);
+  return effectiveRecord;
+}
+
+export async function deleteHospitalContractApproval(id: string) {
+  await wait();
+  const record = getMergedRecords().find((item) => item.id === id);
+  if (!record) {
+    return null;
+  }
+
+  const next: HospitalContractRecord = {
+    ...record,
+    removedFromApproval: true,
+    updatedAt: dayjs().format("YYYY-MM-DD HH:mm"),
+  };
+
   persistMergedRecord(next);
   return next;
 }
 
+export async function listContractApprovalQueue(filters: HospitalContractFilters = {}) {
+  await wait();
+  const contractNo = filters.contractNo?.trim().toLowerCase();
+  const dealerCode = filters.dealerCode?.trim().toLowerCase();
+  const hospitalCode = filters.hospitalCode?.trim().toLowerCase();
+  const submitterName = filters.submitterName?.trim().toLowerCase();
+
+  return getMergedRecords().filter((item) => {
+    if (item.removedFromApproval) {
+      return false;
+    }
+
+    if (item.approvalStatus !== "审核中" && item.approvalStatus !== "审核驳回") {
+      return false;
+    }
+
+    const matchesContractNo = !contractNo || item.contractNo.toLowerCase().includes(contractNo);
+    const matchesDealerCode = !dealerCode || item.dealerCode.toLowerCase().includes(dealerCode);
+    const matchesHospitalCode = !hospitalCode || item.dmsHospitalCode.toLowerCase().includes(hospitalCode);
+    const matchesActionType = !filters.actionType || item.latestActionType === filters.actionType;
+    const matchesSubmitter = !submitterName || item.submitterName.toLowerCase().includes(submitterName);
+
+    return matchesContractNo && matchesDealerCode && matchesHospitalCode && matchesActionType && matchesSubmitter;
+  });
+}
+
+export async function listDealerContractApprovalQueue(dealerAccount: string, filters: HospitalContractFilters = {}) {
+  const dealerProfile = getDealerProfile(dealerAccount);
+  return listContractApprovalQueue({
+    ...filters,
+    dealerCode: dealerProfile.dealerCode,
+  });
+}
+
 export async function listContractApprovals(tab: ContractReviewTab, actorAccount: string, filters: HospitalContractFilters = {}) {
-  const all = await listHospitalContracts(filters);
+  await wait();
+  const contractNo = filters.contractNo?.trim().toLowerCase();
+  const dealerCode = filters.dealerCode?.trim().toLowerCase();
+  const hospitalCode = filters.hospitalCode?.trim().toLowerCase();
+  const submitterName = filters.submitterName?.trim().toLowerCase();
+
+  const all = getMergedRecords().filter((item) => {
+    const matchesContractNo = !contractNo || item.contractNo.toLowerCase().includes(contractNo);
+    const matchesDealerCode = !dealerCode || item.dealerCode.toLowerCase().includes(dealerCode);
+    const matchesHospitalCode = !hospitalCode || item.dmsHospitalCode.toLowerCase().includes(hospitalCode);
+    const matchesActionType = !filters.actionType || item.latestActionType === filters.actionType;
+    const matchesSubmitter = !submitterName || item.submitterName.toLowerCase().includes(submitterName);
+
+    return matchesContractNo && matchesDealerCode && matchesHospitalCode && matchesActionType && matchesSubmitter;
+  });
+
   return all.filter((item) => {
     if (tab === "pending") {
       return item.approvalStatus === "审核中" && Boolean(item.currentApprovalNode);
@@ -379,31 +537,88 @@ export function exportHospitalContractList(records: HospitalContractRecord[], fi
   const worksheet = utils.json_to_sheet(
     records.map((item) => ({
       合同编号: item.contractNo,
-      DMS医院编码: item.dmsHospitalCode,
-      DMS医院名称: item.dmsHospitalName,
-      经销商编码: item.dealerCode,
       经销商名称: item.dealerName,
+      DMS医院名称: item.dmsHospitalName,
       大区: item.region,
       CG: item.cg,
       省份: item.province,
+      经销商编码: item.dealerCode,
+      DMS医院编码: item.dmsHospitalCode,
+      DMS医院合作状态: item.dmsHospitalCooperationStatus,
+      医院地址: item.dmsHospitalAddress,
+      合同形式: item.contractForm,
+      转移类型: item.transferType,
+      科室合同签署方类型: item.contractDepartmentType,
+      合同签署方: item.signatoryFullName,
+      医院收货地址: item.deliveryAddress,
+      合同盖章名称: item.sealName,
+      付款账号: item.paymentAccount,
+      付款账号名称: item.accountHolderName,
+      付款开户行: item.bankName,
       合同签署时间: item.signedAt,
       合同到期时间: item.expiredAt,
+      延期类型: item.renewalType,
+      已延期时间: item.renewedDuration,
       合同存续状态: item.lifeStatus,
+      三方公司成立时间: item.thirdPartyCompanyEstablishedAt,
+      医院指定三方公司营业执照和食品经营资质: item.thirdPartyCompanyQualification,
+      医院指定第三方采购授权方式: item.authorizationMode,
+      "上传三方公司医院授权书/隶属关系证明": item.authorizationProofAttachmentName,
+      医院授权书生效时间: item.authorizationEffectiveAt,
+      医院授权书失效时间: item.authorizationExpiredAt,
+      医院授权第三方采购公司的指定收货人: item.authorizedReceiver,
+      "签署合同医院ETMS-ID": item.signHospitalEtmsId,
+      "使用产品医院ETMS-ID": item.useProductEtmsId,
+      医院指定收货人1: item.receivers[0]?.receiverName ?? "",
+      "医院指定收货人ID-1": item.receivers[0]?.receiverCode ?? "",
+      医院指定收货人2: item.receivers[1]?.receiverName ?? "",
+      "医院指定收货人ID-2": item.receivers[1]?.receiverCode ?? "",
+      医院指定收货人3: item.receivers[2]?.receiverName ?? "",
+      "医院指定收货人ID-3": item.receivers[2]?.receiverCode ?? "",
+      医院指定收货人4: item.receivers[3]?.receiverName ?? "",
+      "医院指定收货人ID-4": item.receivers[3]?.receiverCode ?? "",
     })),
   );
   worksheet["!cols"] = [
     { wch: 18 },
-    { wch: 12 },
-    { wch: 18 },
-    { wch: 24 },
-    { wch: 16 },
     { wch: 28 },
-    { wch: 12 },
-    { wch: 10 },
+    { wch: 24 },
+    { wch: 14 },
     { wch: 12 },
     { wch: 16 },
     { wch: 16 },
     { wch: 14 },
+    { wch: 30 },
+    { wch: 24 },
+    { wch: 24 },
+    { wch: 18 },
+    { wch: 22 },
+    { wch: 28 },
+    { wch: 20 },
+    { wch: 20 },
+    { wch: 18 },
+    { wch: 16 },
+    { wch: 16 },
+    { wch: 14 },
+    { wch: 16 },
+    { wch: 16 },
+    { wch: 22 },
+    { wch: 32 },
+    { wch: 26 },
+    { wch: 28 },
+    { wch: 16 },
+    { wch: 16 },
+    { wch: 28 },
+    { wch: 20 },
+    { wch: 20 },
+    { wch: 18 },
+    { wch: 18 },
+    { wch: 18 },
+    { wch: 18 },
+    { wch: 18 },
+    { wch: 18 },
+    { wch: 18 },
+    { wch: 18 },
   ];
   const workbook = utils.book_new();
   utils.book_append_sheet(workbook, worksheet, "合同列表");
@@ -454,6 +669,12 @@ export function buildDefaultContractValues(): HospitalContractDetailValues {
     renewalType: "无自动延期",
     autoRenewYears: 0,
     renewedDuration: "0 次",
+    thirdPartyCompanyEstablishedAt: dayjs().format("YYYY-MM-DD"),
+    thirdPartyCompanyQualification: "",
+    thirdPartyBusinessLicenseName: "",
+    thirdPartyFoodQualificationName: "",
+    hospitalAuthorizationLetterName: "",
+    authorizationProofAttachmentName: "",
     contractAttachmentName: "",
     thirdPartyEffectiveAt: dayjs().format("YYYY-MM-DD"),
     authorizationMode: "医院授权第三方",
@@ -496,6 +717,12 @@ export function mapRecordToDetailValues(record: HospitalContractRecord): Hospita
     renewalType: record.renewalType,
     autoRenewYears: record.autoRenewYears,
     renewedDuration: record.renewedDuration,
+    thirdPartyCompanyEstablishedAt: record.thirdPartyCompanyEstablishedAt,
+    thirdPartyCompanyQualification: record.thirdPartyCompanyQualification,
+    thirdPartyBusinessLicenseName: record.thirdPartyBusinessLicenseName,
+    thirdPartyFoodQualificationName: record.thirdPartyFoodQualificationName,
+    hospitalAuthorizationLetterName: record.hospitalAuthorizationLetterName,
+    authorizationProofAttachmentName: record.authorizationProofAttachmentName,
     contractAttachmentName: record.contractAttachmentName,
     thirdPartyEffectiveAt: record.thirdPartyEffectiveAt,
     authorizationMode: record.authorizationMode,

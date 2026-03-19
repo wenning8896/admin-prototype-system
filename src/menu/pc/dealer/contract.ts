@@ -13,6 +13,7 @@ export const dealerContractMenu: MenuNode[] = [
     kind: "group",
     children: [
       { id: "dealer-contract-list", label: "合同列表", kind: "records", entity: "contract" },
+      { id: "dealer-pending-contract-list", label: "待审批合同", kind: "approval", entity: "contract" },
       { id: "dealer-sign-receipt-upload", label: "签收单上传", kind: "records", entity: "contract" },
     ],
   },

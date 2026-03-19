@@ -3,24 +3,30 @@ import type { ColumnsType } from "antd/es/table";
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FilterPanel } from "../../../../app/components/FilterPanel";
+import { useAuth } from "../../../../auth/useAuth";
 import type { HospitalContractRecord } from "../../shared/mocks/hospitalContract.mock";
-import { deleteHospitalContractApproval, listContractApprovalQueue, type HospitalContractFilters } from "../../shared/services/hospitalContract.mock-service";
+import {
+  deleteHospitalContractApproval,
+  listDealerContractApprovalQueue,
+  type HospitalContractFilters,
+} from "../../shared/services/hospitalContract.mock-service";
 
-export function ContractApprovalPage() {
+export function DealerPendingContractPage() {
   const [form] = Form.useForm<HospitalContractFilters>();
   const [items, setItems] = useState<HospitalContractRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const { message, modal } = App.useApp();
+  const { user } = useAuth();
 
   const loadData = useCallback(async (filters: HospitalContractFilters = {}) => {
     setLoading(true);
     try {
-      setItems(await listContractApprovalQueue(filters));
+      setItems(await listDealerContractApprovalQueue(user?.account ?? "dealer", filters));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user?.account]);
 
   useEffect(() => {
     void loadData();
@@ -50,13 +56,27 @@ export function ContractApprovalPage() {
       render: (_, record) => (
         <Space size={4}>
           {record.approvalStatus === "审核中" ? (
-            <Button type="link" onClick={() => navigate(`/admin/contract/contract-approval/detail/${record.id}`)}>
-              去审批
+            <Button
+              type="link"
+              onClick={() =>
+                navigate(`/dealer/contract/dealer-contract-list/detail/${record.id}`, {
+                  state: { mode: "view", returnPath: "/dealer/contract/dealer-pending-contract-list" },
+                })
+              }
+            >
+              查看
             </Button>
           ) : null}
           {record.approvalStatus === "审核驳回" ? (
             <>
-              <Button type="link" onClick={() => navigate(`/admin/contract/contract-list/detail/${record.id}`, { state: { mode: "edit", returnPath: "/admin/contract/contract-approval" } })}>
+              <Button
+                type="link"
+                onClick={() =>
+                  navigate(`/dealer/contract/dealer-contract-list/detail/${record.id}`, {
+                    state: { mode: "edit", returnPath: "/dealer/contract/dealer-pending-contract-list" },
+                  })
+                }
+              >
                 编辑
               </Button>
               <Button
@@ -65,7 +85,7 @@ export function ContractApprovalPage() {
                 onClick={() => {
                   modal.confirm({
                     title: "确认删除驳回合同？",
-                    content: "删除后该条驳回记录将不再出现在合同审批模块。",
+                    content: "删除后该条驳回记录将不再出现在待审批合同模块。",
                     okText: "确认删除",
                     cancelText: "取消",
                     onOk: async () => {
@@ -93,9 +113,6 @@ export function ContractApprovalPage() {
             fields={[
               <Form.Item key="contractNo" name="contractNo" label="合同编号">
                 <Input allowClear placeholder="请输入合同编号" />
-              </Form.Item>,
-              <Form.Item key="dealerCode" name="dealerCode" label="经销商编码">
-                <Input allowClear placeholder="请输入经销商编码" />
               </Form.Item>,
               <Form.Item key="hospitalCode" name="hospitalCode" label="DMS医院编码">
                 <Input allowClear placeholder="请输入DMS医院编码" />

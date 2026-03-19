@@ -20,6 +20,8 @@ export type SignReceiptRecord = {
   dealerName: string;
   dmsHospitalCode: string;
   dmsHospitalName: string;
+  procurementType: "直采" | "三方";
+  contractLifeStatus: "有效" | "无效";
   receiverName: string;
   receiverId: string;
   status: SignReceiptStatus;

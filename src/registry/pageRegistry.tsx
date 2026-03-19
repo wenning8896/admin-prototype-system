@@ -1,4 +1,5 @@
 import type { ComponentType } from "react";
+import { AbnormalContractListPage } from "../features/contract/admin/pages/AbnormalContractListPage";
 import { ContractApprovalDetailPage } from "../features/contract/admin/pages/ContractApprovalDetailPage";
 import { ContractApprovalPage } from "../features/contract/admin/pages/ContractApprovalPage";
 import { ContractDetailPage } from "../features/contract/admin/pages/ContractDetailPage";
@@ -15,6 +16,7 @@ import { SignReceiptStatisticsPage } from "../features/contract/admin/pages/Sign
 import { SignReceiptUploadTimeLockPage } from "../features/contract/admin/pages/SignReceiptUploadTimeLockPage";
 import { DealerContractDetailPage } from "../features/contract/dealer/pages/DealerContractDetailPage";
 import { DealerContractListPage } from "../features/contract/dealer/pages/DealerContractListPage";
+import { DealerPendingContractPage } from "../features/contract/dealer/pages/DealerPendingContractPage";
 import { DealerSignReceiptUploadDetailPage } from "../features/contract/dealer/pages/DealerSignReceiptUploadDetailPage";
 import { DealerContractWorkbenchPage } from "../features/contract/dealer/pages/DealerContractWorkbenchPage";
 import { DealerSignReceiptUploadPage } from "../features/contract/dealer/pages/DealerSignReceiptUploadPage";
@@ -74,6 +76,7 @@ import { DistributorReceivingAddressListPage } from "../features/order/distribut
 
 const pageRegistry: Record<string, ComponentType> = {
   "admin.contract.contract-list": ContractListPage,
+  "admin.contract.abnormal-contract-list": AbnormalContractListPage,
   "admin.contract.contract-workbench": ContractWorkbenchPage,
   "admin.contract.contract-approval": ContractApprovalPage,
   "admin.contract.hospital-procurement-product-list": HospitalProcurementProductListPage,
@@ -116,6 +119,7 @@ const pageRegistry: Record<string, ComponentType> = {
   "dealer.order.dealer-product-price-maintenance": DealerProductPriceMaintenancePage,
   "dealer.contract.dealer-contract-workbench": DealerContractWorkbenchPage,
   "dealer.contract.dealer-contract-list": DealerContractListPage,
+  "dealer.contract.dealer-pending-contract-list": DealerPendingContractPage,
   "dealer.contract.dealer-sign-receipt-upload": DealerSignReceiptUploadPage,
   "distributor.order.distributor-order-list": DistributorPlatformOrderListPage,
   "distributor.order.distributor-receiving-address-list": DistributorReceivingAddressListPage,
