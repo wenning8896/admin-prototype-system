@@ -4,6 +4,10 @@ import { listHospitalContracts } from "../../shared/services/hospitalContract.mo
 
 const STORAGE_KEY = "csl-contract-admin-hospital-compliance-maintenance";
 
+export type HospitalComplianceFilters = {
+  etmsId?: string;
+};
+
 export type HospitalComplianceRecord = {
   id: string;
   etmsId: string;
@@ -61,9 +65,11 @@ async function getRecords() {
   return seeds;
 }
 
-export async function listHospitalComplianceRecords() {
+export async function listHospitalComplianceRecords(filters: HospitalComplianceFilters = {}) {
   await new Promise((resolve) => window.setTimeout(resolve, 180));
-  return getRecords();
+  const etmsId = filters.etmsId?.trim().toLowerCase();
+  const records = await getRecords();
+  return records.filter((item) => !etmsId || item.etmsId.toLowerCase().includes(etmsId));
 }
 
 export function exportHospitalComplianceRecords(records: HospitalComplianceRecord[]) {

@@ -1,10 +1,10 @@
-import { App, Button, Card, Modal, Space, Steps, Table, Upload } from "antd";
+import { App, Button, Card, Form, Input, Modal, Space, Steps, Table, Upload } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import type { UploadProps } from "antd";
 import { useEffect, useState } from "react";
-import type { HospitalComplianceRecord } from "../services/hospitalComplianceMaintenance.mock-service";
+import { FilterPanel } from "../../../../app/components/FilterPanel";
+import type { HospitalComplianceFilters, HospitalComplianceRecord } from "../services/hospitalComplianceMaintenance.mock-service";
 import {
-  batchDeleteHospitalComplianceRecords,
   downloadHospitalComplianceTemplate,
   exportHospitalComplianceRecords,
   importHospitalComplianceRecords,
@@ -12,18 +12,18 @@ import {
 } from "../services/hospitalComplianceMaintenance.mock-service";
 
 export function HospitalComplianceMaintenancePage() {
-  const { message, modal } = App.useApp();
+  const [form] = Form.useForm<HospitalComplianceFilters>();
+  const { message } = App.useApp();
   const [items, setItems] = useState<HospitalComplianceRecord[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [importOpen, setImportOpen] = useState(false);
   const [importing, setImporting] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
-  async function loadData() {
+  async function loadData(filters: HospitalComplianceFilters = {}) {
     setLoading(true);
     try {
-      setItems(await listHospitalComplianceRecords());
+      setItems(await listHospitalComplianceRecords(filters));
     } finally {
       setLoading(false);
     }
@@ -68,28 +68,33 @@ export function HospitalComplianceMaintenancePage() {
     }
   }
 
-  function handleBatchDelete() {
-    if (selectedRowKeys.length === 0) {
-      void message.warning("请先选择需要删除的记录。");
-      return;
-    }
-
-    modal.confirm({
-      title: "确认批量删除医院合规记录？",
-      content: `确认删除选中的 ${selectedRowKeys.length} 条记录吗？`,
-      okText: "确认删除",
-      cancelText: "取消",
-      onOk: async () => {
-        const result = await batchDeleteHospitalComplianceRecords(selectedRowKeys.map((item) => String(item)));
-        void message.success(result);
-        setSelectedRowKeys([]);
-        await loadData();
-      },
-    });
-  }
-
   return (
     <Space direction="vertical" size={16} className="page-stack">
+      <Card
+        className="page-card"
+        title="筛选条件"
+      >
+        <Form form={form} layout="vertical">
+          <FilterPanel
+            fields={[
+              <Form.Item key="etmsId" name="etmsId" label="ETMS-ID">
+                <Input allowClear placeholder="请输入ETMS-ID" />
+              </Form.Item>,
+            ]}
+            actions={
+              <>
+                <Button type="primary" onClick={() => void loadData(form.getFieldsValue())}>
+                  查询
+                </Button>
+                <Button onClick={() => { form.resetFields(); void loadData(); }}>
+                  重置
+                </Button>
+              </>
+            }
+          />
+        </Form>
+      </Card>
+
       <Card
         className="page-card"
         extra={
@@ -101,9 +106,6 @@ export function HospitalComplianceMaintenancePage() {
               }}
             >
               导入
-            </Button>
-            <Button onClick={handleBatchDelete} danger>
-              批量删除
             </Button>
             <Button
               onClick={() => {
@@ -121,10 +123,6 @@ export function HospitalComplianceMaintenancePage() {
           loading={loading}
           dataSource={items}
           columns={columns}
-          rowSelection={{
-            selectedRowKeys,
-            onChange: setSelectedRowKeys,
-          }}
           pagination={{ pageSize: 8, showTotal: (total) => `共 ${total} 条` }}
         />
       </Card>
