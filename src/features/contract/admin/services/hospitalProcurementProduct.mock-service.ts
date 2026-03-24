@@ -6,7 +6,11 @@ import { listHospitalContracts } from "../../shared/services/hospitalContract.mo
 const STORAGE_KEY = "csl-contract-admin-hospital-procurement-products";
 
 export type HospitalProcurementProductFilters = {
-  keyword?: string;
+  productCode?: string;
+  productName?: string;
+  brand?: string;
+  maintainToContract?: "Y" | "N";
+  maintainToSignReceipt?: "Y" | "N";
 };
 
 type StoredHospitalProcurementProduct = HospitalContractProduct & {
@@ -50,6 +54,8 @@ function buildBaseProductMap(products: HospitalContractProduct[]) {
         productCode: item.productCode,
         productName: item.productName,
         brand: item.brand,
+        maintainToContract: item.maintainToContract ?? "Y",
+        maintainToSignReceipt: item.maintainToSignReceipt ?? "Y",
         suggestedPrice: item.suggestedPrice,
         price: item.price,
       });
@@ -60,6 +66,8 @@ function buildBaseProductMap(products: HospitalContractProduct[]) {
       ...existing,
       productName: existing.productName || item.productName,
       brand: existing.brand || item.brand,
+      maintainToContract: existing.maintainToContract || item.maintainToContract || "N",
+      maintainToSignReceipt: existing.maintainToSignReceipt || item.maintainToSignReceipt || "N",
       suggestedPrice: item.suggestedPrice || existing.suggestedPrice,
       price: item.price ?? existing.price,
     });
@@ -80,17 +88,23 @@ export async function listHospitalProcurementProducts(filters: HospitalProcureme
       productCode: item.productCode,
       productName: item.productName || existing?.productName || `导入产品 ${item.productCode}`,
       brand: item.brand || existing?.brand || "",
+      maintainToContract: item.maintainToContract || existing?.maintainToContract || "Y",
+      maintainToSignReceipt: item.maintainToSignReceipt || existing?.maintainToSignReceipt || "Y",
       suggestedPrice: item.suggestedPrice,
       price: existing?.price ?? item.price,
     });
   });
 
-  const keyword = filters.keyword?.trim().toLowerCase();
+  const productCode = filters.productCode?.trim().toLowerCase();
+  const productName = filters.productName?.trim().toLowerCase();
+  const brand = filters.brand?.trim().toLowerCase();
   return Array.from(baseMap.values()).filter(
     (item) =>
-      !keyword ||
-      item.productCode.toLowerCase().includes(keyword) ||
-      item.productName.toLowerCase().includes(keyword),
+      (!productCode || item.productCode.toLowerCase().includes(productCode)) &&
+      (!productName || item.productName.toLowerCase().includes(productName)) &&
+      (!brand || (item.brand ?? "").toLowerCase().includes(brand)) &&
+      (!filters.maintainToContract || item.maintainToContract === filters.maintainToContract) &&
+      (!filters.maintainToSignReceipt || item.maintainToSignReceipt === filters.maintainToSignReceipt),
   );
 }
 
@@ -100,11 +114,13 @@ export function exportHospitalProcurementProducts(records: HospitalContractProdu
       产品编码: item.productCode,
       产品名称: item.productName,
       品牌: item.brand ?? "",
+      是否维护到合同: item.maintainToContract ?? "N",
+      是否维护到签收单: item.maintainToSignReceipt ?? "N",
       建议价格: item.suggestedPrice,
     })),
   );
 
-  worksheet["!cols"] = [{ wch: 18 }, { wch: 28 }, { wch: 18 }, { wch: 14 }];
+  worksheet["!cols"] = [{ wch: 18 }, { wch: 28 }, { wch: 18 }, { wch: 18 }, { wch: 18 }, { wch: 14 }];
 
   const workbook = utils.book_new();
   utils.book_append_sheet(workbook, worksheet, "院采产品列表");
@@ -117,11 +133,13 @@ export function downloadHospitalProcurementProductTemplate() {
       产品编码: "P-1001",
       产品名称: "启赋配方奶粉 1 段",
       品牌: "启赋",
+      是否维护到合同: "Y",
+      是否维护到签收单: "Y",
       建议价格: 328,
     },
   ]);
 
-  templateSheet["!cols"] = [{ wch: 18 }, { wch: 28 }, { wch: 18 }, { wch: 14 }];
+  templateSheet["!cols"] = [{ wch: 18 }, { wch: 28 }, { wch: 18 }, { wch: 18 }, { wch: 18 }, { wch: 14 }];
 
   const instructionSheet = utils.aoa_to_sheet([
     ["院采产品列表导入说明"],
@@ -130,6 +148,8 @@ export function downloadHospitalProcurementProductTemplate() {
     ["产品编码", "是", "导入时按产品编码写入产品记录"],
     ["产品名称", "是", "不能为空"],
     ["品牌", "是", "不能为空"],
+    ["是否维护到合同", "是", "仅支持 Y 或 N"],
+    ["是否维护到签收单", "是", "仅支持 Y 或 N"],
     ["建议价格", "是", "必须为大于等于 0 的数字"],
     [],
     ["处理逻辑", "说明"],
@@ -158,10 +178,21 @@ export async function importHospitalProcurementProducts(file: File) {
     const productCode = String(row["产品编码"] ?? "").trim();
     const productName = String(row["产品名称"] ?? "").trim();
     const brand = String(row["品牌"] ?? "").trim();
+    const maintainToContract = String(row["是否维护到合同"] ?? "").trim().toUpperCase();
+    const maintainToSignReceipt = String(row["是否维护到签收单"] ?? "").trim().toUpperCase();
     const suggestedPriceRaw = String(row["建议价格"] ?? "").trim();
     const suggestedPrice = Number(suggestedPriceRaw);
 
-    if (!productCode || !productName || !brand || suggestedPriceRaw === "" || Number.isNaN(suggestedPrice) || suggestedPrice < 0) {
+    if (
+      !productCode ||
+      !productName ||
+      !brand ||
+      !["Y", "N"].includes(maintainToContract) ||
+      !["Y", "N"].includes(maintainToSignReceipt) ||
+      suggestedPriceRaw === "" ||
+      Number.isNaN(suggestedPrice) ||
+      suggestedPrice < 0
+    ) {
       skippedCount += 1;
       return;
     }
@@ -171,6 +202,8 @@ export async function importHospitalProcurementProducts(file: File) {
       productCode,
       productName,
       brand,
+      maintainToContract: maintainToContract as "Y" | "N",
+      maintainToSignReceipt: maintainToSignReceipt as "Y" | "N",
       suggestedPrice,
       price: suggestedPrice,
       updatedAt: dayjs().format("YYYY-MM-DD HH:mm:ss"),

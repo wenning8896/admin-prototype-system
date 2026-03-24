@@ -7,6 +7,8 @@ export type HospitalContractProduct = {
   productCode: string;
   productName: string;
   brand?: string;
+  maintainToContract?: "Y" | "N";
+  maintainToSignReceipt?: "Y" | "N";
   suggestedPrice: number;
   price?: number;
 };
@@ -193,8 +195,8 @@ export const contractSeedRecords: HospitalContractRecord[] = [
       { id: "receiver-2", receiverName: "钱老师", receiverCode: "RCV-002" },
     ],
     products: [
-      { id: "product-1", productCode: "P-1001", productName: "启赋配方奶粉 1 段", suggestedPrice: 328, price: 328 },
-      { id: "product-2", productCode: "P-1002", productName: "启赋配方奶粉 2 段", suggestedPrice: 338, price: 338 },
+      { id: "product-1", productCode: "P-1001", productName: "启赋配方奶粉 1 段", brand: "启赋", maintainToContract: "Y", maintainToSignReceipt: "Y", suggestedPrice: 328, price: 328 },
+      { id: "product-2", productCode: "P-1002", productName: "启赋配方奶粉 2 段", brand: "启赋", maintainToContract: "Y", maintainToSignReceipt: "N", suggestedPrice: 338, price: 338 },
     ],
     createdAt: "2026-03-01 10:00",
     updatedAt: "2026-03-03 16:40",
@@ -301,7 +303,7 @@ export const contractSeedRecords: HospitalContractRecord[] = [
     authorizationExpiredAt: "2027-03-04",
     authorizedReceiver: "李老师",
     receivers: [{ id: "receiver-3", receiverName: "李老师", receiverCode: "RCV-003" }],
-    products: [{ id: "product-3", productCode: "P-2001", productName: "启赋敏适", suggestedPrice: 398, price: 398 }],
+    products: [{ id: "product-3", productCode: "P-2001", productName: "启赋敏适", brand: "启赋", maintainToContract: "Y", maintainToSignReceipt: "Y", suggestedPrice: 398, price: 398 }],
     createdAt: "2026-03-05 11:30",
     updatedAt: "2026-03-06 09:15",
     approvalHistory: [
@@ -376,7 +378,7 @@ export const contractSeedRecords: HospitalContractRecord[] = [
     authorizationExpiredAt: "2027-03-07",
     authorizedReceiver: "邱护士长",
     receivers: [{ id: "receiver-4", receiverName: "邱护士长", receiverCode: "RCV-004" }],
-    products: [{ id: "product-4", productCode: "P-3001", productName: "启赋有机 3 段", suggestedPrice: 368, price: 368 }],
+    products: [{ id: "product-4", productCode: "P-3001", productName: "启赋有机 3 段", brand: "启赋有机", maintainToContract: "N", maintainToSignReceipt: "Y", suggestedPrice: 368, price: 368 }],
     createdAt: "2026-03-08 14:20",
     updatedAt: "2026-03-09 17:50",
     approvalHistory: [
@@ -451,7 +453,7 @@ export const contractSeedRecords: HospitalContractRecord[] = [
     authorizationExpiredAt: "2026-12-09",
     authorizedReceiver: "周主任",
     receivers: [{ id: "receiver-5", receiverName: "周主任", receiverCode: "RCV-005" }],
-    products: [{ id: "product-5", productCode: "P-1001", productName: "启赋配方奶粉 1 段", suggestedPrice: 328, price: 328 }],
+    products: [{ id: "product-5", productCode: "P-1001", productName: "启赋配方奶粉 1 段", brand: "启赋", maintainToContract: "Y", maintainToSignReceipt: "Y", suggestedPrice: 328, price: 328 }],
     createdAt: "2025-12-10 08:45",
     updatedAt: "2026-02-20 19:00",
     approvalHistory: [
@@ -559,8 +561,8 @@ export const contractSeedRecords: HospitalContractRecord[] = [
       { id: "receiver-7", receiverName: "谢老师", receiverCode: "RCV-007" },
     ],
     products: [
-      { id: "product-6", productCode: "P-4001", productName: "启赋蕴淳 1 段", suggestedPrice: 348, price: 348 },
-      { id: "product-7", productCode: "P-5001", productName: "启赋未来 4 段", suggestedPrice: 288, price: 288 },
+      { id: "product-6", productCode: "P-4001", productName: "启赋蕴淳 1 段", brand: "启赋蕴淳", maintainToContract: "Y", maintainToSignReceipt: "N", suggestedPrice: 348, price: 348 },
+      { id: "product-7", productCode: "P-5001", productName: "启赋未来 4 段", brand: "启赋未来", maintainToContract: "N", maintainToSignReceipt: "Y", suggestedPrice: 288, price: 288 },
     ],
     createdAt: "2026-03-12 09:30",
     updatedAt: "2026-03-13 16:01",
