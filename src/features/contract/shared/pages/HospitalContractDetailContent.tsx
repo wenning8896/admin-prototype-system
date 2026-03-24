@@ -10,7 +10,8 @@ import type { ContractActionType, HospitalContractDetailValues, HospitalContract
 import {
   buildDefaultContractValues,
   canClose,
-  canRenewOrSupplement,
+  canRenew,
+  canSupplement,
   getDealerProfile,
   getHospitalContractById,
   mapRecordToDetailValues,
@@ -83,6 +84,25 @@ function buildVersionChangeContent(actionType: ContractActionType) {
     return "发起关闭合同并归档当前版本。";
   }
   return "新建合同并生成首个生效版本。";
+}
+
+function getSupplyPriceHint(price?: number, suggestedPrice?: number) {
+  const normalizedPrice = Number(price ?? 0);
+  const normalizedSuggestedPrice = Number(suggestedPrice ?? 0);
+
+  if (!normalizedPrice || !normalizedSuggestedPrice) {
+    return undefined;
+  }
+
+  if (normalizedPrice > normalizedSuggestedPrice * 2) {
+    return "供货价格已超出2倍QIP";
+  }
+
+  if (normalizedPrice < normalizedSuggestedPrice) {
+    return "供货价格低于QIP供货";
+  }
+
+  return undefined;
 }
 
 function exportHospitalVersionNotice(fileName: string, messageApi: { success: (content: string) => void }) {
@@ -293,27 +313,35 @@ export function HospitalContractDetailContent({ role, title, backPath }: Props) 
       render: (value: string) => value || "-",
     },
     {
-      title: "建议价格",
-      dataIndex: "suggestedPrice",
-      width: 140,
-      render: (value: number) => `¥ ${Number(value ?? 0).toFixed(2)}`,
-    },
-    {
-      title: "价格",
+      title: "供货价格",
       dataIndex: "price",
-      width: 160,
-      render: (_: unknown, __: HospitalContractProduct, index: number) =>
-        readonly ? (
-          `¥ ${Number(form.getFieldValue(["products", index, "price"]) ?? form.getFieldValue(["products", index, "suggestedPrice"]) ?? 0).toFixed(2)}`
-        ) : (
-          <Form.Item
-            name={["products", index, "price"]}
-            noStyle
-            rules={[{ required: true, message: "请输入价格" }]}
-          >
-            <InputNumber min={0} precision={2} style={{ width: "100%" }} placeholder="请输入价格" />
-          </Form.Item>
-        ),
+      width: 220,
+      render: (_: unknown, row: HospitalContractProduct, index: number) => {
+        const currentPrice = Number(form.getFieldValue(["products", index, "price"]) ?? row.price ?? row.suggestedPrice ?? 0);
+        const hint = getSupplyPriceHint(currentPrice, row.suggestedPrice);
+
+        if (readonly) {
+          return (
+            <Space direction="vertical" size={4}>
+              <span>{`¥ ${currentPrice.toFixed(2)}`}</span>
+              {hint ? <Typography.Text style={{ color: "rgba(0, 0, 0, 0.88)" }}>{hint}</Typography.Text> : null}
+            </Space>
+          );
+        }
+
+        return (
+          <Space direction="vertical" size={4} style={{ width: "100%" }}>
+            <Form.Item
+              name={["products", index, "price"]}
+              noStyle
+              rules={[{ required: true, message: "请输入供货价格" }]}
+            >
+              <InputNumber min={0} precision={2} style={{ width: "100%" }} placeholder="请输入供货价格" />
+            </Form.Item>
+            {hint ? <Typography.Text style={{ color: "rgba(0, 0, 0, 0.88)" }}>{hint}</Typography.Text> : null}
+          </Space>
+        );
+      },
     },
     ...(readonly
       ? []
@@ -422,7 +450,7 @@ export function HospitalContractDetailContent({ role, title, backPath }: Props) 
             <Typography.Title level={4} className="agreement-detail__title">
               {title}
             </Typography.Title>
-            {record ? <Tag color={record.lifeStatus === "有效" ? "success" : "default"}>{record.lifeStatus}</Tag> : null}
+            {record ? <Tag color={record.lifeStatus === "有效" ? "success" : record.lifeStatus === "待生效" ? "processing" : record.lifeStatus === "失效" ? "warning" : "default"}>{record.lifeStatus}</Tag> : null}
           </Space>
           <Space>
             {!readonly ? (
@@ -430,13 +458,13 @@ export function HospitalContractDetailContent({ role, title, backPath }: Props) 
                 提交
               </Button>
             ) : null}
-            {readonly && record && canRenewOrSupplement(record) ? (
+            {readonly && record && (canRenew(record) || canSupplement(record)) ? (
               <>
-                <Button onClick={() => navigate(`${backPath}/detail/${record.id}`, { state: { mode: "renew" satisfies DetailMode, returnPath: effectiveBackPath } })}>续签</Button>
-                <Button onClick={() => navigate(`${backPath}/detail/${record.id}`, { state: { mode: "supplement" satisfies DetailMode, returnPath: effectiveBackPath } })}>补充 SKU</Button>
+                {canRenew(record) ? <Button onClick={() => navigate(`${backPath}/detail/${record.id}`, { state: { mode: "renew" satisfies DetailMode, returnPath: effectiveBackPath } })}>续签</Button> : null}
+                {canSupplement(record) ? <Button onClick={() => navigate(`${backPath}/detail/${record.id}`, { state: { mode: "supplement" satisfies DetailMode, returnPath: effectiveBackPath } })}>补充 SKU</Button> : null}
               </>
             ) : null}
-            {readonly && record && canClose(record) ? <Button danger onClick={handleCloseContract}>关闭</Button> : null}
+            {readonly && record && canClose(record) ? <Button danger onClick={handleCloseContract}>关闭合同</Button> : null}
           </Space>
         </div>
       </Card>
@@ -626,7 +654,6 @@ export function HospitalContractDetailContent({ role, title, backPath }: Props) 
             <Form.Item
               name="authorizedReceiver"
               label="医院授权第三方采购公司的指定收货人"
-              rules={[{ required: true, message: "请输入指定收货人" }]}
               style={{ marginTop: 16 }}
             >
               <Input placeholder="请输入医院授权第三方采购公司的指定收货人" />

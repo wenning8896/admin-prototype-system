@@ -1,11 +1,12 @@
 export type ContractApprovalStatus = "草稿" | "审核中" | "审核通过" | "审核驳回";
-export type ContractLifeStatus = "有效" | "无效";
+export type ContractLifeStatus = "待生效" | "有效" | "失效" | "关闭";
 export type ContractActionType = "新建合同" | "续签" | "补充SKU" | "关闭合同";
 
 export type HospitalContractProduct = {
   id: string;
   productCode: string;
   productName: string;
+  brand?: string;
   suggestedPrice: number;
   price?: number;
 };
@@ -256,7 +257,7 @@ export const contractSeedRecords: HospitalContractRecord[] = [
     removedFromApproval: false,
     contractNo: "HT-202603-002",
     approvalStatus: "审核中",
-    lifeStatus: "有效",
+    lifeStatus: "待生效",
     pendingAction: "新建合同",
     latestActionType: "新建合同",
     currentApprovalNode: "法务审批",
@@ -333,7 +334,7 @@ export const contractSeedRecords: HospitalContractRecord[] = [
     removedFromApproval: false,
     contractNo: "HT-202603-003",
     approvalStatus: "审核驳回",
-    lifeStatus: "有效",
+    lifeStatus: "待生效",
     latestActionType: "新建合同",
     submitterName: "王敏",
     submitterAccount: "dealer001",
@@ -408,7 +409,7 @@ export const contractSeedRecords: HospitalContractRecord[] = [
     removedFromApproval: false,
     contractNo: "HT-202512-018",
     approvalStatus: "审核通过",
-    lifeStatus: "无效",
+    lifeStatus: "关闭",
     latestActionType: "关闭合同",
     submitterName: "王敏",
     submitterAccount: "dealer001",

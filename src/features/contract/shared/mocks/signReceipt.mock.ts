@@ -21,7 +21,7 @@ export type SignReceiptRecord = {
   dmsHospitalCode: string;
   dmsHospitalName: string;
   procurementType: "直采" | "三方";
-  contractLifeStatus: "有效" | "无效";
+  contractLifeStatus: "待生效" | "有效" | "失效" | "关闭";
   receiverName: string;
   receiverId: string;
   status: SignReceiptStatus;

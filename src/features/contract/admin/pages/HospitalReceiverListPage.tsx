@@ -33,6 +33,7 @@ export function HospitalReceiverListPage() {
 
   const columns: ColumnsType<HospitalReceiverListRecord> = [
     { title: "使用产品医院ETMS-ID", dataIndex: "etmsId", width: 220 },
+    { title: "医疗机构名称", dataIndex: "medicalInstitutionName", width: 260 },
     { title: "收货人姓名", dataIndex: "receiverName", width: 180 },
     { title: "收货人ID", dataIndex: "receiverId", width: 180 },
   ];
@@ -124,9 +125,9 @@ export function HospitalReceiverListPage() {
           <Steps
             current={0}
             items={[
-              { title: "下载模板", description: "模板字段：使用产品医院ETMS-ID、收货人姓名、收货人ID" },
+              { title: "下载模板", description: "模板字段：使用产品医院ETMS-ID、医疗机构名称、收货人姓名、收货人ID" },
               { title: "上传文件", description: "仅支持 .xlsx 文件" },
-              { title: "完成导入", description: "按 ETMS-ID 全量覆盖收货人" },
+              { title: "完成导入", description: "按导入文件全量覆盖医院收货人列表" },
             ]}
           />
 

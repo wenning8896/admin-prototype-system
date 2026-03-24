@@ -18,7 +18,7 @@ export const adminContractMenu: MenuNode[] = [
         kind: "group",
         children: [
           { id: "contract-list", label: "合同列表", kind: "records", entity: "contract" },
-          { id: "abnormal-contract-list", label: "异常合同列表", kind: "records", entity: "contract" },
+          { id: "abnormal-contract-list", label: "合同关闭代办清单", kind: "records", entity: "contract" },
           { id: "contract-approval", label: "待审批合同", kind: "approval", entity: "contract" },
           { id: "hospital-procurement-product-list", label: "院采产品列表", kind: "records", entity: "contract" },
           { id: "hospital-compliance-maintenance", label: "医院合规维护", kind: "schema", entity: "contract" },

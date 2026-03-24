@@ -81,7 +81,7 @@ export function ContractApprovalDetailPage() {
   const productColumns: ColumnsType<HospitalContractProduct> = [
     { title: "产品编码", dataIndex: "productCode", width: 160 },
     { title: "产品名称", dataIndex: "productName", width: 220 },
-    { title: "建议价格", dataIndex: "suggestedPrice", width: 140, render: (value: number) => `¥ ${value.toFixed(2)}` },
+    { title: "供货价格", dataIndex: "price", width: 160, render: (_: number, row: HospitalContractProduct) => `¥ ${(row.price ?? row.suggestedPrice).toFixed(2)}` },
   ];
 
   return (
@@ -93,7 +93,7 @@ export function ContractApprovalDetailPage() {
             <Typography.Title level={4} className="agreement-detail__title">
               合同审批详情
             </Typography.Title>
-            {record ? <Tag color={record.lifeStatus === "有效" ? "success" : "default"}>{record.lifeStatus}</Tag> : null}
+            {record ? <Tag color={record.lifeStatus === "有效" ? "success" : record.lifeStatus === "待生效" ? "processing" : record.lifeStatus === "失效" ? "warning" : "default"}>{record.lifeStatus}</Tag> : null}
           </Space>
         </div>
       </Card>

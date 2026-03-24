@@ -35,6 +35,8 @@ export function HospitalComplianceMaintenancePage() {
 
   const columns: ColumnsType<HospitalComplianceRecord> = [
     { title: "使用产品医院ETMS-ID", dataIndex: "etmsId", width: 240 },
+    { title: "医疗机构名称", dataIndex: "medicalInstitutionName", width: 260 },
+    { title: "标签", dataIndex: "tags", width: 260 },
     { title: "创建时间", dataIndex: "createdAt", width: 180 },
   ];
 
@@ -152,9 +154,9 @@ export function HospitalComplianceMaintenancePage() {
           <Steps
             current={0}
             items={[
-              { title: "下载模板", description: "必填字段：使用产品医院ETMS-ID" },
+              { title: "下载模板", description: "必填字段：使用产品医院ETMS-ID、医疗机构名称、标签" },
               { title: "上传文件", description: "仅支持 .xlsx 文件" },
-              { title: "完成导入", description: "已存在 ETMS-ID 会跳过" },
+              { title: "完成导入", description: "每次导入按文件内容全量覆盖医院合规维护" },
             ]}
           />
 

@@ -7,7 +7,8 @@ import { useAuth } from "../../../../auth/useAuth";
 import type { HospitalContractRecord } from "../../shared/mocks/hospitalContract.mock";
 import {
   canClose,
-  canRenewOrSupplement,
+  canRenew,
+  canSupplement,
   exportHospitalContractList,
   listDealerHospitalContracts,
   triggerContractClose,
@@ -57,14 +58,18 @@ export function DealerContractListPage() {
           <Button type="link" onClick={() => navigate(`/dealer/contract/dealer-contract-list/detail/${record.id}`, { state: { mode: "view" } })}>
             查看
           </Button>
-          {canRenewOrSupplement(record) ? (
+          {canRenew(record) || canSupplement(record) ? (
             <>
-              <Button type="link" onClick={() => navigate(`/dealer/contract/dealer-contract-list/detail/${record.id}`, { state: { mode: "renew" } })}>
-                续签
-              </Button>
-              <Button type="link" onClick={() => navigate(`/dealer/contract/dealer-contract-list/detail/${record.id}`, { state: { mode: "supplement" } })}>
-                补充 SKU
-              </Button>
+              {canRenew(record) ? (
+                <Button type="link" onClick={() => navigate(`/dealer/contract/dealer-contract-list/detail/${record.id}`, { state: { mode: "renew" } })}>
+                  续签
+                </Button>
+              ) : null}
+              {canSupplement(record) ? (
+                <Button type="link" onClick={() => navigate(`/dealer/contract/dealer-contract-list/detail/${record.id}`, { state: { mode: "supplement" } })}>
+                  补充 SKU
+                </Button>
+              ) : null}
             </>
           ) : null}
           {canClose(record) ? (
@@ -96,7 +101,7 @@ export function DealerContractListPage() {
                 });
               }}
             >
-              关闭
+              关闭合同
             </Button>
           ) : null}
         </Space>

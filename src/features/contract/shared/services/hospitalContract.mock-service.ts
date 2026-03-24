@@ -44,6 +44,30 @@ function wait() {
   return new Promise((resolve) => window.setTimeout(resolve, 180));
 }
 
+function getComputedLifeStatus(record: Pick<HospitalContractRecord, "approvalStatus" | "lifeStatus" | "signedAt" | "expiredAt">) {
+  if (record.lifeStatus === "关闭" || String(record.lifeStatus) === "无效") {
+    return "关闭" as const;
+  }
+
+  if (record.approvalStatus !== "审核通过") {
+    return record.lifeStatus === "待生效" ? "待生效" : "有效";
+  }
+
+  const today = dayjs().startOf("day");
+  const signedAt = dayjs(record.signedAt).startOf("day");
+  const expiredAt = dayjs(record.expiredAt).startOf("day");
+
+  if (signedAt.isValid() && signedAt.isAfter(today)) {
+    return "待生效" as const;
+  }
+
+  if (expiredAt.isValid() && expiredAt.isBefore(today)) {
+    return "失效" as const;
+  }
+
+  return "有效" as const;
+}
+
 function readStoredRecords() {
   if (typeof window === "undefined") {
     return [];
@@ -84,7 +108,10 @@ function getMergedRecords() {
     merged.unshift(record);
   });
 
-  return merged;
+  return merged.map((item) => ({
+    ...item,
+    lifeStatus: getComputedLifeStatus(item),
+  }));
 }
 
 function persistMergedRecord(nextRecord: HospitalContractRecord) {
@@ -174,7 +201,7 @@ function toRecord(values: HospitalContractDetailValues, actor: ContractActor, ex
     removedFromApproval: existing?.removedFromApproval ?? false,
     contractNo: existing?.contractNo ?? `HT-${dayjs().format("YYYYMM")}-${String(Math.floor(Math.random() * 900) + 100)}`,
     approvalStatus: existing?.approvalStatus ?? "草稿",
-    lifeStatus: existing?.lifeStatus ?? "有效",
+    lifeStatus: existing?.lifeStatus ?? "待生效",
     pendingAction: existing?.pendingAction,
     latestActionType: existing?.latestActionType,
     currentApprovalNode: existing?.currentApprovalNode,
@@ -342,7 +369,7 @@ export async function triggerContractClose(id: string, actor: ContractActor) {
 
   const next: HospitalContractRecord = {
     ...record,
-    lifeStatus: "无效",
+    lifeStatus: "关闭",
     latestActionType: "关闭合同",
     pendingAction: undefined,
     currentApprovalNode: undefined,
@@ -420,9 +447,9 @@ export async function reviewHospitalContract(params: {
   next.pendingAction = undefined;
 
   if (record.pendingAction === "关闭合同") {
-    next.lifeStatus = "无效";
+    next.lifeStatus = "关闭";
   } else {
-    next.lifeStatus = "有效";
+    next.lifeStatus = getComputedLifeStatus(next);
   }
 
   if (record.pendingAction === "续签") {
@@ -537,6 +564,7 @@ export function exportHospitalContractList(records: HospitalContractRecord[], fi
   const worksheet = utils.json_to_sheet(
     records.map((item) => ({
       合同编号: item.contractNo,
+      合同ID: item.contractId,
       经销商名称: item.dealerName,
       DMS医院名称: item.dmsHospitalName,
       大区: item.region,
@@ -741,12 +769,28 @@ export function mapRecordToDetailValues(record: HospitalContractRecord): Hospita
   };
 }
 
+export function canRenew(record: HospitalContractRecord) {
+  if (record.approvalStatus !== "审核通过") {
+    return false;
+  }
+
+  return record.lifeStatus === "有效" || record.lifeStatus === "失效" || record.lifeStatus === "待生效";
+}
+
+export function canSupplement(record: HospitalContractRecord) {
+  if (record.approvalStatus !== "审核通过") {
+    return false;
+  }
+
+  return record.lifeStatus === "有效" || record.lifeStatus === "待生效";
+}
+
 export function canRenewOrSupplement(record: HospitalContractRecord) {
-  return record.approvalStatus === "审核通过";
+  return canRenew(record) || canSupplement(record);
 }
 
 export function canClose(record: HospitalContractRecord) {
-  return record.approvalStatus === "审核通过" && record.lifeStatus !== "无效";
+  return record.approvalStatus === "审核通过" && record.lifeStatus !== "关闭";
 }
 
 export function hasPendingContractWorkflow(record: HospitalContractRecord) {
@@ -758,7 +802,7 @@ export function getContractStatistics(records: HospitalContractRecord[]) {
     total: records.length,
     pending: records.filter((item) => item.approvalStatus === "审核中").length,
     active: records.filter((item) => item.lifeStatus === "有效").length,
-    invalid: records.filter((item) => item.lifeStatus === "无效").length,
+    invalid: records.filter((item) => item.lifeStatus === "关闭" || item.lifeStatus === "失效").length,
   };
 }
 

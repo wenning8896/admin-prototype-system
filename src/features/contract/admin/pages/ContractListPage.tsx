@@ -7,7 +7,8 @@ import { useAuth } from "../../../../auth/useAuth";
 import type { HospitalContractRecord } from "../../shared/mocks/hospitalContract.mock";
 import {
   canClose,
-  canRenewOrSupplement,
+  canRenew,
+  canSupplement,
   exportHospitalContractList,
   listHospitalContracts,
   triggerContractClose,
@@ -15,8 +16,10 @@ import {
 } from "../../shared/services/hospitalContract.mock-service";
 
 const lifeColorMap: Record<string, string> = {
+  待生效: "processing",
   有效: "success",
-  无效: "default",
+  失效: "warning",
+  关闭: "default",
 };
 
 export function ContractListPage() {
@@ -92,14 +95,18 @@ export function ContractListPage() {
           <Button type="link" onClick={() => navigate(`/admin/contract/contract-list/detail/${record.id}`, { state: { mode: "view" } })}>
             查看
           </Button>
-          {canRenewOrSupplement(record) ? (
+          {canRenew(record) || canSupplement(record) ? (
             <>
-              <Button type="link" onClick={() => navigate(`/admin/contract/contract-list/detail/${record.id}`, { state: { mode: "renew" } })}>
-                续签
-              </Button>
-              <Button type="link" onClick={() => navigate(`/admin/contract/contract-list/detail/${record.id}`, { state: { mode: "supplement" } })}>
-                补充 SKU
-              </Button>
+              {canRenew(record) ? (
+                <Button type="link" onClick={() => navigate(`/admin/contract/contract-list/detail/${record.id}`, { state: { mode: "renew" } })}>
+                  续签
+                </Button>
+              ) : null}
+              {canSupplement(record) ? (
+                <Button type="link" onClick={() => navigate(`/admin/contract/contract-list/detail/${record.id}`, { state: { mode: "supplement" } })}>
+                  补充 SKU
+                </Button>
+              ) : null}
             </>
           ) : null}
           {canClose(record) ? (
@@ -133,7 +140,7 @@ export function ContractListPage() {
                 });
               }}
             >
-              关闭
+              关闭合同
             </Button>
           ) : null}
         </Space>
@@ -167,7 +174,7 @@ export function ContractListPage() {
                 <Select
                   allowClear
                   placeholder="请选择"
-                  options={["有效", "无效"].map((item) => ({ label: item, value: item }))}
+                  options={["待生效", "有效", "失效", "关闭"].map((item) => ({ label: item, value: item }))}
                 />
               </Form.Item>,
             ]}
