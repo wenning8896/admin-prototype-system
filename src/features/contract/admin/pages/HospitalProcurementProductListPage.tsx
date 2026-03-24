@@ -1,4 +1,4 @@
-import { App, Button, Card, Form, Input, Modal, Space, Steps, Table, Upload } from "antd";
+import { App, Button, Card, Form, Input, Modal, Select, Space, Steps, Table, Upload } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import type { UploadProps } from "antd";
 import { useEffect, useState } from "react";
@@ -38,6 +38,8 @@ export function HospitalProcurementProductListPage() {
     { title: "产品编码", dataIndex: "productCode", width: 180 },
     { title: "产品名称", dataIndex: "productName", width: 260 },
     { title: "品牌", dataIndex: "brand", width: 180, render: (value?: string) => value || "-" },
+    { title: "是否维护到合同", dataIndex: "maintainToContract", width: 160, render: (value?: string) => value || "-" },
+    { title: "是否维护到签收单", dataIndex: "maintainToSignReceipt", width: 180, render: (value?: string) => value || "-" },
     { title: "建议价格", dataIndex: "suggestedPrice", width: 140, render: (value: number) => `¥ ${value.toFixed(2)}` },
   ];
 
@@ -75,8 +77,23 @@ export function HospitalProcurementProductListPage() {
         <Form form={form} layout="vertical">
           <FilterPanel
             fields={[
-              <Form.Item key="keyword" name="keyword" label="产品编码 / 产品名称">
-                <Input allowClear placeholder="请输入产品编码或产品名称" />
+              <Form.Item key="productCode" name="productCode" label="产品编码">
+                <Input allowClear placeholder="请输入产品编码" />
+              </Form.Item>,
+              <Form.Item key="productName" name="productName" label="产品名称">
+                <Input allowClear placeholder="请输入产品名称" />
+              </Form.Item>,
+              <Form.Item key="brand" name="brand" label="品牌">
+                <Input allowClear placeholder="请输入品牌" />
+              </Form.Item>,
+              <Form.Item key="maintainToContract" name="maintainToContract" label="是否维护到合同">
+                <Select allowClear placeholder="请选择" options={["Y", "N"].map((item) => ({ label: item, value: item }))} />
+              </Form.Item>,
+              <Form.Item key="maintainToSignReceipt" name="maintainToSignReceipt" label="是否维护到签收单">
+                <Select allowClear placeholder="请选择" options={["Y", "N"].map((item) => ({ label: item, value: item }))} />
+              </Form.Item>,
+              <Form.Item key="spacer" style={{ marginBottom: 0 }}>
+                <span />
               </Form.Item>,
             ]}
             actions={
@@ -111,7 +128,7 @@ export function HospitalProcurementProductListPage() {
           </Space>
         }
       >
-        <Table rowKey="id" loading={loading} dataSource={items} columns={columns} tableLayout="fixed" scroll={{ x: 680 }} pagination={{ pageSize: 8, showTotal: (total) => `共 ${total} 条` }} />
+        <Table rowKey="id" loading={loading} dataSource={items} columns={columns} tableLayout="fixed" scroll={{ x: 980 }} pagination={{ pageSize: 8, showTotal: (total) => `共 ${total} 条` }} />
       </Card>
 
       <Modal
@@ -146,7 +163,7 @@ export function HospitalProcurementProductListPage() {
           <Steps
             current={0}
             items={[
-              { title: "下载模板", description: "模板字段：产品编码、产品名称、品牌、建议价格" },
+              { title: "下载模板", description: "模板字段：产品编码、产品名称、品牌、是否维护到合同、是否维护到签收单、建议价格" },
               { title: "上传文件", description: "仅支持 .xlsx 文件" },
               { title: "完成导入", description: "按导入文件全量覆盖院采产品列表" },
             ]}
