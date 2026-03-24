@@ -13,8 +13,10 @@ import {
 } from "../../shared/services/hospitalContract.mock-service";
 
 const lifeColorMap: Record<string, string> = {
+  待生效: "processing",
   有效: "success",
-  无效: "default",
+  失效: "warning",
+  关闭: "default",
 };
 
 export function AbnormalContractListPage() {
@@ -28,7 +30,7 @@ export function AbnormalContractListPage() {
     setLoading(true);
     try {
       const all = await listHospitalContracts(filters, "admin");
-      setItems(all.filter((item) => item.dmsHospitalCooperationStatus === "N"));
+      setItems(all.filter((item) => item.dmsHospitalCooperationStatus === "N" && item.lifeStatus !== "关闭"));
     } finally {
       setLoading(false);
     }
@@ -100,7 +102,7 @@ export function AbnormalContractListPage() {
               });
             }}
           >
-            关闭
+            关闭合同
           </Button>
         ) : null,
     },
@@ -129,7 +131,7 @@ export function AbnormalContractListPage() {
                 />
               </Form.Item>,
               <Form.Item key="lifeStatus" name="lifeStatus" label="合同存续状态">
-                <Select allowClear placeholder="请选择" options={["有效", "无效"].map((item) => ({ label: item, value: item }))} />
+                <Select allowClear placeholder="请选择" options={["待生效", "有效", "失效", "关闭"].map((item) => ({ label: item, value: item }))} />
               </Form.Item>,
             ]}
             actions={
@@ -146,7 +148,7 @@ export function AbnormalContractListPage() {
         className="page-card"
         extra={
           <Space>
-            <Button onClick={() => { exportHospitalContractList(items, "异常合同列表"); void message.success("异常合同列表已导出为 .xlsx 文件。"); }}>
+            <Button onClick={() => { exportHospitalContractList(items, "合同关闭代办清单"); void message.success("合同关闭代办清单已导出为 .xlsx 文件。"); }}>
               导出
             </Button>
           </Space>

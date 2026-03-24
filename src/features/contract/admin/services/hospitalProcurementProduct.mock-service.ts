@@ -49,6 +49,7 @@ function buildBaseProductMap(products: HospitalContractProduct[]) {
         id: item.id,
         productCode: item.productCode,
         productName: item.productName,
+        brand: item.brand,
         suggestedPrice: item.suggestedPrice,
         price: item.price,
       });
@@ -58,6 +59,7 @@ function buildBaseProductMap(products: HospitalContractProduct[]) {
     map.set(item.productCode, {
       ...existing,
       productName: existing.productName || item.productName,
+      brand: existing.brand || item.brand,
       suggestedPrice: item.suggestedPrice || existing.suggestedPrice,
       price: item.price ?? existing.price,
     });
@@ -77,6 +79,7 @@ export async function listHospitalProcurementProducts(filters: HospitalProcureme
       id: existing?.id ?? item.id,
       productCode: item.productCode,
       productName: item.productName || existing?.productName || `导入产品 ${item.productCode}`,
+      brand: item.brand || existing?.brand || "",
       suggestedPrice: item.suggestedPrice,
       price: existing?.price ?? item.price,
     });
@@ -96,11 +99,12 @@ export function exportHospitalProcurementProducts(records: HospitalContractProdu
     records.map((item) => ({
       产品编码: item.productCode,
       产品名称: item.productName,
+      品牌: item.brand ?? "",
       建议价格: item.suggestedPrice,
     })),
   );
 
-  worksheet["!cols"] = [{ wch: 18 }, { wch: 28 }, { wch: 14 }];
+  worksheet["!cols"] = [{ wch: 18 }, { wch: 28 }, { wch: 18 }, { wch: 14 }];
 
   const workbook = utils.book_new();
   utils.book_append_sheet(workbook, worksheet, "院采产品列表");
@@ -111,22 +115,25 @@ export function downloadHospitalProcurementProductTemplate() {
   const templateSheet = utils.json_to_sheet([
     {
       产品编码: "P-1001",
+      产品名称: "启赋配方奶粉 1 段",
+      品牌: "启赋",
       建议价格: 328,
     },
   ]);
 
-  templateSheet["!cols"] = [{ wch: 18 }, { wch: 14 }];
+  templateSheet["!cols"] = [{ wch: 18 }, { wch: 28 }, { wch: 18 }, { wch: 14 }];
 
   const instructionSheet = utils.aoa_to_sheet([
     ["院采产品列表导入说明"],
     [],
     ["字段名", "是否必填", "说明"],
-    ["产品编码", "是", "按产品编码匹配现有产品；未匹配到时该行会跳过"],
+    ["产品编码", "是", "导入时按产品编码写入产品记录"],
+    ["产品名称", "是", "不能为空"],
+    ["品牌", "是", "不能为空"],
     ["建议价格", "是", "必须为大于等于 0 的数字"],
     [],
     ["处理逻辑", "说明"],
-    ["覆盖规则", "按产品编码更新建议价格"],
-    ["新增规则", "系统内不存在的产品编码不允许导入，会直接跳过"],
+    ["覆盖规则", "每次导入按文件内容全量覆盖院采产品列表"],
   ]);
 
   instructionSheet["!cols"] = [{ wch: 18 }, { wch: 12 }, { wch: 60 }];
@@ -142,42 +149,36 @@ export async function importHospitalProcurementProducts(file: File) {
   const workbook = read(buffer, { type: "array" });
   const worksheet = workbook.Sheets[workbook.SheetNames[0]];
   const rows = utils.sheet_to_json<Record<string, string | number>>(worksheet, { defval: "" });
-  const currentProducts = await listHospitalProcurementProducts();
-  const currentProductCodes = new Set(currentProducts.map((item) => item.productCode));
-  const stored = readStoredRecords();
-  const storedMap = new Map(stored.map((item) => [item.productCode, item]));
+  const nextRecords: StoredHospitalProcurementProduct[] = [];
 
   let successCount = 0;
   let skippedCount = 0;
 
-  rows.forEach((row) => {
+  rows.forEach((row, index) => {
     const productCode = String(row["产品编码"] ?? "").trim();
+    const productName = String(row["产品名称"] ?? "").trim();
+    const brand = String(row["品牌"] ?? "").trim();
     const suggestedPriceRaw = String(row["建议价格"] ?? "").trim();
     const suggestedPrice = Number(suggestedPriceRaw);
 
-    if (!productCode || suggestedPriceRaw === "" || Number.isNaN(suggestedPrice) || suggestedPrice < 0) {
+    if (!productCode || !productName || !brand || suggestedPriceRaw === "" || Number.isNaN(suggestedPrice) || suggestedPrice < 0) {
       skippedCount += 1;
       return;
     }
 
-    if (!currentProductCodes.has(productCode)) {
-      skippedCount += 1;
-      return;
-    }
-
-    const existing = storedMap.get(productCode);
-    storedMap.set(productCode, {
-      id: existing?.id ?? `hospital-procurement-product-${productCode}`,
+    nextRecords.push({
+      id: `hospital-procurement-product-${productCode}-${index + 1}`,
       productCode,
-      productName: existing?.productName ?? `导入产品 ${productCode}`,
+      productName,
+      brand,
       suggestedPrice,
-      price: existing?.price,
+      price: suggestedPrice,
       updatedAt: dayjs().format("YYYY-MM-DD HH:mm:ss"),
     });
     successCount += 1;
   });
 
-  persistStoredRecords(Array.from(storedMap.values()));
+  persistStoredRecords(nextRecords);
 
   return {
     successCount,

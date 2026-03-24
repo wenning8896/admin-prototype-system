@@ -37,6 +37,7 @@ export function HospitalProcurementProductListPage() {
   const columns: ColumnsType<HospitalContractProduct> = [
     { title: "产品编码", dataIndex: "productCode", width: 180 },
     { title: "产品名称", dataIndex: "productName", width: 260 },
+    { title: "品牌", dataIndex: "brand", width: 180, render: (value?: string) => value || "-" },
     { title: "建议价格", dataIndex: "suggestedPrice", width: 140, render: (value: number) => `¥ ${value.toFixed(2)}` },
   ];
 
@@ -145,9 +146,9 @@ export function HospitalProcurementProductListPage() {
           <Steps
             current={0}
             items={[
-              { title: "下载模板", description: "模板字段：产品编码、建议价格" },
+              { title: "下载模板", description: "模板字段：产品编码、产品名称、品牌、建议价格" },
               { title: "上传文件", description: "仅支持 .xlsx 文件" },
-              { title: "完成导入", description: "按产品编码更新建议价格" },
+              { title: "完成导入", description: "按导入文件全量覆盖院采产品列表" },
             ]}
           />
 

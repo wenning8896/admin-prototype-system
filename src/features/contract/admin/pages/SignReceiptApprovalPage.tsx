@@ -61,7 +61,7 @@ const statusColorMap: Record<string, string> = {
 };
 
 function resolveReceiptStatus(record: SignReceiptRecord) {
-  if (record.contractLifeStatus === "无效") {
+  if (record.contractLifeStatus === "关闭" || record.contractLifeStatus === "失效") {
     return "无效";
   }
   if (record.status === "审批驳回") {
