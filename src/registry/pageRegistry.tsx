@@ -26,6 +26,10 @@ import { CustomerDistributorApprovalDetailPage } from "../features/order/admin/p
 import { CustomerDistributorApprovalPage } from "../features/order/admin/pages/CustomerDistributorApprovalPage";
 import { ContractSigningApprovalDetailPage } from "../features/order/admin/pages/ContractSigningApprovalDetailPage";
 import { ContractSigningApprovalPage } from "../features/order/admin/pages/ContractSigningApprovalPage";
+import { ContractSigningListDetailPage } from "../features/order/admin/pages/ContractSigningListDetailPage";
+import { ContractSigningListPage } from "../features/order/admin/pages/ContractSigningListPage";
+import { AdminOrderDetailPage } from "../features/order/admin/pages/AdminOrderDetailPage";
+import { AdminOrderListPage } from "../features/order/admin/pages/AdminOrderListPage";
 import { CustomerDistributorDetailPage } from "../features/order/admin/pages/CustomerDistributorDetailPage";
 import { CustomerDistributorListPage } from "../features/order/admin/pages/CustomerDistributorListPage";
 import { DealerDistributorSupplyRelationApprovalPage } from "../features/order/admin/pages/DealerDistributorSupplyRelationApprovalPage";
@@ -39,12 +43,21 @@ import { ServiceProviderInventoryListPage } from "../features/order/admin/pages/
 import { ServiceProviderListPage } from "../features/order/admin/pages/ServiceProviderListPage";
 import { ShipToListPage } from "../features/order/admin/pages/ShipToListPage";
 import { ShipToMappingPage } from "../features/order/admin/pages/ShipToMappingPage";
+import { SiAchievementEstimationDashboardPage } from "../features/order/admin/pages/SiAchievementEstimationDashboardPage";
+import { SuggestionOrderApprovalPage } from "../features/order/admin/pages/SuggestionOrderApprovalPage";
+import {
+  SuggestionOrderApprovalDetailPage,
+  SuggestionOrderDetailPage,
+} from "../features/order/admin/pages/SuggestionOrderDetailPages";
+import { SuggestionOrderListPage } from "../features/order/admin/pages/SuggestionOrderListPage";
 import { SoldToListPage } from "../features/order/admin/pages/SoldToListPage";
 import {
   DistributorManagerMaintenancePage,
   LineManagerMaintenancePage,
   ServiceOwnerMaintenancePage,
 } from "../features/order/admin/pages/ServiceOwnerMaintenancePage";
+import { InterceptionReleaseApprovalDetailPage } from "../features/order/admin/pages/InterceptionReleaseApprovalDetailPage";
+import { InterceptionReleaseApprovalPage } from "../features/order/admin/pages/InterceptionReleaseApprovalPage";
 import { PlatformConfigPage } from "../features/order/admin/pages/PlatformConfigPage";
 import { PlatformOrderDetailPage } from "../features/order/admin/pages/PlatformOrderDetailPage";
 import { PlatformOrderApprovalDetailPage } from "../features/order/admin/pages/PlatformOrderApprovalDetailPage";
@@ -78,8 +91,13 @@ const pageRegistry: Record<string, ComponentType> = {
   "admin.order.distributor-approval": CustomerDistributorApprovalPage,
   "admin.order.dealer-distributor-supply-relation-maintenance": DealerDistributorSupplyRelationPage,
   "admin.order.dealer-distributor-supply-relation-approval": DealerDistributorSupplyRelationApprovalPage,
+  "admin.order.suggestion-order-list": SuggestionOrderListPage,
+  "admin.order.suggestion-order-approval": SuggestionOrderApprovalPage,
   "admin.order.interception-release-application": InterceptionReleaseApplicationPage,
+  "admin.order.interception-release-approval": InterceptionReleaseApprovalPage,
+  "admin.order.si-achievement-estimation-dashboard": SiAchievementEstimationDashboardPage,
   "admin.order.e-distributor-list": EDistributorListPage,
+  "admin.order.contract-signing-list": ContractSigningListPage,
   "admin.order.contract-signing-approval": ContractSigningApprovalPage,
   "admin.order.distributor-inventory-list": DistributorInventoryListPage,
   "admin.order.service-provider-list": ServiceProviderListPage,
@@ -93,6 +111,7 @@ const pageRegistry: Record<string, ComponentType> = {
   "admin.order.sold-to-list": SoldToListPage,
   "admin.order.ship-to-list": ShipToListPage,
   "admin.order.ship-to-mapping": ShipToMappingPage,
+  "admin.order.order-list": AdminOrderListPage,
   "admin.order.platform-order-approval": PlatformOrderApprovalPage,
   "admin.order.platform-order-list": PlatformOrderListPage,
   "dealer.order.dealer-platform-order-list": DealerPlatformOrderListPage,
@@ -114,8 +133,13 @@ const pageDetailRegistry: Record<string, ComponentType> = {
   "admin.contract.sign-receipt-approval": SignReceiptApprovalDetailPage,
   "admin.order.distributor-list": CustomerDistributorDetailPage,
   "admin.order.distributor-approval": CustomerDistributorApprovalDetailPage,
+  "admin.order.suggestion-order-list": SuggestionOrderDetailPage,
+  "admin.order.suggestion-order-approval": SuggestionOrderApprovalDetailPage,
   "admin.order.contract-signing-approval": ContractSigningApprovalDetailPage,
+  "admin.order.contract-signing-list": ContractSigningListDetailPage,
   "admin.order.interception-release-application": InterceptionReleaseApplicationDetailPage,
+  "admin.order.interception-release-approval": InterceptionReleaseApprovalDetailPage,
+  "admin.order.order-list": AdminOrderDetailPage,
   "admin.order.platform-order-approval": PlatformOrderApprovalDetailPage,
   "admin.order.platform-order-list": PlatformOrderDetailPage,
   "dealer.order.dealer-platform-order-list": DealerPlatformOrderDetailPage,

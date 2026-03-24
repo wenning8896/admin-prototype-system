@@ -143,6 +143,8 @@ export function DealerDistributorSupplyRelationApprovalPage() {
     { title: "经销商类型", dataIndex: "dealerType", width: 120 },
     { title: "分销商编码", dataIndex: "distributorCode", width: 140 },
     { title: "分销商名称", dataIndex: "distributorName", width: 220 },
+    { title: "创建人账号", dataIndex: "creatorAccount", width: 160 },
+    { title: "创建时间", dataIndex: "createdAt", width: 180 },
     {
       title: "状态",
       dataIndex: "status",
@@ -259,7 +261,7 @@ export function DealerDistributorSupplyRelationApprovalPage() {
           dataSource={items}
           columns={columns}
           tableLayout="fixed"
-          scroll={{ x: 1320 }}
+          scroll={{ x: 1660 }}
           expandable={
             tab === "reviewed"
               ? {

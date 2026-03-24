@@ -49,6 +49,8 @@ export function DealerDistributorSupplyRelationPage() {
     { title: "经销商类型", dataIndex: "dealerType", width: 120 },
     { title: "分销商编码", dataIndex: "distributorCode", width: 150 },
     { title: "分销商名称", dataIndex: "distributorName", width: 220 },
+    { title: "创建人账号", dataIndex: "creatorAccount", width: 160 },
+    { title: "创建时间", dataIndex: "createdAt", width: 180 },
     {
       title: "状态",
       dataIndex: "status",
@@ -200,7 +202,7 @@ export function DealerDistributorSupplyRelationPage() {
             onChange: setSelectedRowKeys,
           }}
           tableLayout="fixed"
-          scroll={{ x: 1400 }}
+          scroll={{ x: 1740 }}
           pagination={{ pageSize: 8, showSizeChanger: true, showTotal: (total) => `共 ${total} 条` }}
         />
       </Card>

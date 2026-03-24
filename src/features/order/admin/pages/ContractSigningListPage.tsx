@@ -22,53 +22,45 @@ const stageColorMap: Record<AgreementStage, string> = {
   审批驳回: "error",
 };
 
-export function DealerPurchaseSaleAgreementListPage() {
-  const [form] = Form.useForm<{
-    agreementNo?: string;
-    distributorName?: string;
-    serviceProviderName?: string;
-    status?: AgreementStage;
-  }>();
+type SigningListFilters = {
+  keyword?: string;
+  serviceProviderName?: string;
+  status?: AgreementStage;
+};
+
+export function ContractSigningListPage() {
+  const [form] = Form.useForm<SigningListFilters>();
   const [invalidateForm] = Form.useForm<{ reason: string }>();
   const { message } = App.useApp();
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [items, setItems] = useState<PurchaseAgreementRecord[]>([]);
   const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
+  const [invalidating, setInvalidating] = useState(false);
   const [invalidateTarget, setInvalidateTarget] = useState<PurchaseAgreementRecord | null>(null);
-  const navigate = useNavigate();
 
-  async function loadData(
-    filters: {
-      agreementNo?: string;
-      distributorName?: string;
-      serviceProviderName?: string;
-      status?: AgreementStage;
-    } = {},
-  ) {
+  async function loadData(filters: SigningListFilters = {}) {
     setLoading(true);
     try {
       const all = await listPurchaseAgreements();
-      const agreementNo = filters.agreementNo?.trim().toLowerCase();
-      const distributorName = filters.distributorName?.trim().toLowerCase();
+      const keyword = filters.keyword?.trim().toLowerCase();
       const serviceProviderName = filters.serviceProviderName?.trim().toLowerCase();
+
       const next = all.filter((item) => {
-        const matchesAgreementNo =
-          !agreementNo || (item.agreementNo ?? item.applicationNo).toLowerCase().includes(agreementNo);
-        const matchesDistributorName =
-          !distributorName || item.distributorName.toLowerCase().includes(distributorName);
+        const agreementKeyword = item.agreementNo ?? item.applicationNo;
+        const matchesKeyword =
+          !keyword ||
+          agreementKeyword.toLowerCase().includes(keyword) ||
+          item.applicationNo.toLowerCase().includes(keyword) ||
+          item.distributorName.toLowerCase().includes(keyword) ||
+          item.distributorCode.toLowerCase().includes(keyword);
         const matchesServiceProviderName =
           !serviceProviderName || item.serviceProviderName.toLowerCase().includes(serviceProviderName);
         const matchesStatus = !filters.status || item.status === filters.status;
-        return (
-          matchesAgreementNo &&
-          matchesDistributorName &&
-          matchesServiceProviderName &&
-          matchesStatus &&
-          item.status !== "待签约审批" &&
-          item.status !== "审批驳回"
-        );
+
+        return matchesKeyword && matchesServiceProviderName && matchesStatus;
       });
+
       setItems(next);
     } finally {
       setLoading(false);
@@ -79,20 +71,20 @@ export function DealerPurchaseSaleAgreementListPage() {
     void loadData();
   }, []);
 
-  async function handleInvalidate() {
+  async function handleInvalidateSubmit() {
     if (!invalidateTarget || !user) {
       return;
     }
 
     const values = await invalidateForm.validateFields();
-    setSubmitting(true);
+    setInvalidating(true);
     try {
       await invalidatePurchaseAgreement({
         id: invalidateTarget.id,
         reason: values.reason,
         operatorAccount: user.account,
         operatorName: user.name,
-        source: "dealer-agreement-list",
+        source: "admin-signing-list",
       });
       void message.success("平台协议已作废。");
       setInvalidateTarget(null);
@@ -101,7 +93,7 @@ export function DealerPurchaseSaleAgreementListPage() {
     } catch (error) {
       void message.error(error instanceof Error ? error.message : "作废协议失败");
     } finally {
-      setSubmitting(false);
+      setInvalidating(false);
     }
   }
 
@@ -112,27 +104,34 @@ export function DealerPurchaseSaleAgreementListPage() {
       width: 180,
       render: (value: string | undefined, record) => value ?? record.applicationNo,
     },
+    { title: "申请编号", dataIndex: "applicationNo", width: 180 },
     { title: "分销商名称", dataIndex: "distributorName", width: 220 },
+    { title: "分销商编码", dataIndex: "distributorCode", width: 140 },
     { title: "服务商", dataIndex: "serviceProviderName", width: 180 },
-    { title: "创建时间", dataIndex: "createdAt", width: 160 },
+    {
+      title: "当前节点",
+      dataIndex: "currentApprovalNode",
+      width: 160,
+      render: (value: string) => <Tag>{value}</Tag>,
+    },
     {
       title: "当前状态",
       dataIndex: "status",
-      width: 150,
+      width: 140,
       render: (value: AgreementStage) => <Tag color={stageColorMap[value]}>{value}</Tag>,
     },
+    { title: "发起时间", dataIndex: "createdAt", width: 160 },
+    { title: "审批时间", dataIndex: "approvalAt", width: 160, render: (value?: string) => value ?? "-" },
+    { title: "作废时间", dataIndex: "invalidatedAt", width: 160, render: (value?: string) => value ?? "-" },
     {
       title: "操作",
       key: "actions",
       fixed: "right",
-      width: 220,
+      width: 180,
       render: (_, record) => (
         <Space size={12}>
-          <Button
-            type="link"
-            onClick={() => navigate(`/dealer/order/dealer-purchase-sale-agreement-list/detail/${record.id}`)}
-          >
-            {record.status === "待服务商补充" ? "补充协议" : "查看"}
+          <Button type="link" onClick={() => navigate(`/admin/order/contract-signing-list/detail/${record.id}`)}>
+            查看详情
           </Button>
           {canInvalidatePurchaseAgreement(record.status) ? (
             <Button
@@ -157,11 +156,8 @@ export function DealerPurchaseSaleAgreementListPage() {
         <Form form={form} layout="vertical">
           <FilterPanel
             fields={[
-              <Form.Item key="agreementNo" name="agreementNo" label="协议编号">
-                <Input allowClear placeholder="请输入协议编号" />
-              </Form.Item>,
-              <Form.Item key="distributorName" name="distributorName" label="分销商名称">
-                <Input allowClear placeholder="请输入分销商名称" />
+              <Form.Item key="keyword" name="keyword" label="协议编号 / 申请编号 / 分销商">
+                <Input allowClear placeholder="请输入关键词" />
               </Form.Item>,
               <Form.Item key="serviceProviderName" name="serviceProviderName" label="服务商">
                 <Input allowClear placeholder="请输入服务商名称" />
@@ -200,7 +196,7 @@ export function DealerPurchaseSaleAgreementListPage() {
           dataSource={items}
           columns={columns}
           tableLayout="fixed"
-          scroll={{ x: 1160 }}
+          scroll={{ x: 1680 }}
           pagination={{ pageSize: 8, showSizeChanger: true, showTotal: (total) => `共 ${total} 条` }}
         />
       </Card>
@@ -210,12 +206,12 @@ export function DealerPurchaseSaleAgreementListPage() {
         open={Boolean(invalidateTarget)}
         okText="确认作废"
         cancelText="取消"
-        okButtonProps={{ danger: true, loading: submitting }}
+        okButtonProps={{ danger: true, loading: invalidating }}
         onCancel={() => {
           setInvalidateTarget(null);
           invalidateForm.resetFields();
         }}
-        onOk={() => void handleInvalidate()}
+        onOk={() => void handleInvalidateSubmit()}
       >
         <Space direction="vertical" size={12} className="page-stack">
           <div>作废后当前平台协议流程终止，如需继续合作，请重新发起协议。</div>

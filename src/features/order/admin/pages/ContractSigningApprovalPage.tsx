@@ -16,6 +16,7 @@ const stageColorMap: Record<AgreementStage, string> = {
   待分销商签署: "purple",
   待服务商签署: "gold",
   已签署完成: "success",
+  已作废: "default",
   审批驳回: "error",
 };
 
