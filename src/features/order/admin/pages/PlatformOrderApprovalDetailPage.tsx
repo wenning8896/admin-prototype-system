@@ -15,6 +15,7 @@ const statusColorMap: Record<EDistributionOrderStatus, string> = {
   待发货: "gold",
   待收货: "blue",
   收货待确认: "cyan",
+  收货异常待确认: "magenta",
   收货待重新提交: "warning",
   已完成: "success",
   取消确认中: "orange",

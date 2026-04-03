@@ -1,6 +1,17 @@
+export const productBuOptions = [
+  { value: "奶品", label: "奶品" },
+  { value: "咖啡", label: "咖啡" },
+  { value: "糖果", label: "糖果" },
+  { value: "RTD", label: "RTD" },
+  { value: "星巴克", label: "星巴克" },
+] as const;
+
+export type ProductBuNameCn = (typeof productBuOptions)[number]["value"];
+
 export type PurchasePriceRecord = {
   id: string;
   productCode: string;
+  productBu: ProductBuNameCn;
   productName: string;
   imageUrl?: string;
   imageLabel: string;
@@ -13,6 +24,7 @@ export type SalePriceRecord = {
   serviceProviderCode: string;
   serviceProviderName: string;
   productCode: string;
+  productBu: ProductBuNameCn;
   productName: string;
   serviceProviderPurchasePrice: number;
   serviceProviderSalePrice: number;
@@ -25,6 +37,7 @@ export const purchasePriceSeedRecords: PurchasePriceRecord[] = [
   {
     id: "purchase-price-001",
     productCode: "SKU-10001",
+    productBu: "奶品",
     productName: "金装奶品 250ml",
     imageUrl: undefined,
     imageLabel: "奶",
@@ -34,6 +47,7 @@ export const purchasePriceSeedRecords: PurchasePriceRecord[] = [
   {
     id: "purchase-price-002",
     productCode: "SKU-10002",
+    productBu: "咖啡",
     productName: "即饮咖啡 300ml",
     imageUrl: undefined,
     imageLabel: "咖",
@@ -43,6 +57,7 @@ export const purchasePriceSeedRecords: PurchasePriceRecord[] = [
   {
     id: "purchase-price-003",
     productCode: "SKU-10003",
+    productBu: "RTD",
     productName: "经典 RTD 饮品",
     imageUrl: undefined,
     imageLabel: "R",
@@ -57,6 +72,7 @@ export const salePriceSeedRecords: SalePriceRecord[] = [
     serviceProviderCode: "SP-001",
     serviceProviderName: "华东履约服务商",
     productCode: "SKU-10001",
+    productBu: "奶品",
     productName: "金装奶品 250ml",
     serviceProviderPurchasePrice: 18.6,
     serviceProviderSalePrice: 21.8,
@@ -69,6 +85,7 @@ export const salePriceSeedRecords: SalePriceRecord[] = [
     serviceProviderCode: "SP-002",
     serviceProviderName: "华南仓配服务商",
     productCode: "SKU-10002",
+    productBu: "咖啡",
     productName: "即饮咖啡 300ml",
     serviceProviderPurchasePrice: 22.4,
     serviceProviderSalePrice: 25.2,
@@ -81,6 +98,7 @@ export const salePriceSeedRecords: SalePriceRecord[] = [
     serviceProviderCode: "SP-003",
     serviceProviderName: "西南区域服务商",
     productCode: "SKU-10003",
+    productBu: "RTD",
     productName: "经典 RTD 饮品",
     serviceProviderPurchasePrice: 16.8,
     serviceProviderSalePrice: 19.1,

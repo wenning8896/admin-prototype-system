@@ -3,6 +3,7 @@ export type EDistributionOrderStatus =
   | "待发货"
   | "待收货"
   | "收货待确认"
+  | "收货异常待确认"
   | "收货待重新提交"
   | "已完成"
   | "取消确认中"
@@ -29,6 +30,7 @@ export type OrderFulfillmentItem = {
   healthType: ProductHealthType;
   batchNo: string;
   quantity: number;
+  abnormalReason?: string;
 };
 
 export type OrderReceiptInfo = {
@@ -79,6 +81,7 @@ export type EDistributionOrderRecord = {
   consigneeAddress: string;
   consigneePostalCode: string;
   paymentProof?: string;
+  isAbnormal?: boolean;
   createdAt: string;
   status: EDistributionOrderStatus;
   currentApprovalType?: ApprovalType;
@@ -329,7 +332,8 @@ export const eDistributionOrderSeedRecords: EDistributionOrderRecord[] = [
     consigneePostalCode: "201203",
     paymentProof: "付款证明_EOD20260311003.pdf",
     createdAt: "2026-03-11 09:18",
-    status: "收货待确认",
+    status: "收货异常待确认",
+    isAbnormal: true,
     shipmentNo: "SHIP2026031103",
     shippedAt: "2026-03-11 15:30",
     shipmentDetails: [
@@ -349,7 +353,8 @@ export const eDistributionOrderSeedRecords: EDistributionOrderRecord[] = [
         productName: "金装奶品 250ml",
         healthType: "好货",
         batchNo: "MILK260311B",
-        quantity: 100,
+        quantity: 96,
+        abnormalReason: "收货数量异常",
       },
     ],
     receipt: {

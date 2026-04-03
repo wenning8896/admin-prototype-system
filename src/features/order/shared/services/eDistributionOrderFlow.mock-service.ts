@@ -79,6 +79,12 @@ type SubmitReceiptPayload = {
   actorName: string;
 };
 
+type ReceiptComparisonResult = {
+  isAbnormal: boolean;
+  shipmentDetails: OrderFulfillmentItem[];
+  receivingDetails: OrderFulfillmentItem[];
+};
+
 function readStoredRecords() {
   if (typeof window === "undefined") {
     return [];
@@ -208,6 +214,105 @@ function buildFulfillmentDetails(products: OrderProductItem[], recordId: string,
     batchNo: `${item.productCode.replace(/[^A-Z0-9]/g, "")}${dayjs().format("YYMMDD")}${String(index + 1).padStart(2, "0")}`,
     quantity: item.quantity,
   }));
+}
+
+function buildReceiptDraftDetails(current: EDistributionOrderRecord, remark: string) {
+  const baseDetails = current.shipmentDetails?.length
+    ? current.shipmentDetails.map((item, index) => ({
+        ...item,
+        id: `${current.id}-receipt-${index + 1}`,
+        abnormalReason: undefined,
+      }))
+    : buildFulfillmentDetails(current.products, current.id, "receipt");
+
+  const normalizedRemark = remark.trim();
+
+  if (baseDetails.length === 0 || !normalizedRemark) {
+    return baseDetails;
+  }
+
+  const firstItem = baseDetails[0];
+
+  if (normalizedRemark.includes("商品差异")) {
+    baseDetails[0] = {
+      ...firstItem,
+      productCode: `${firstItem.productCode}-ALT`,
+      productName: `${firstItem.productName}（替代）`,
+    };
+  }
+
+  if (normalizedRemark.includes("批次差异")) {
+    baseDetails[0] = {
+      ...baseDetails[0],
+      batchNo: `${firstItem.batchNo}-ALT`,
+    };
+  }
+
+  if (normalizedRemark.includes("数量差异")) {
+    baseDetails[0] = {
+      ...baseDetails[0],
+      quantity: Math.max(firstItem.quantity - 2, 0),
+    };
+  }
+
+  return baseDetails;
+}
+
+function compareReceiptDetails(
+  shipmentDetails: OrderFulfillmentItem[],
+  receivingDetails: OrderFulfillmentItem[],
+): ReceiptComparisonResult {
+  const shipmentByCode = new Map(shipmentDetails.map((item) => [item.productCode, item]));
+
+  const nextShipmentDetails: OrderFulfillmentItem[] = shipmentDetails.map((item) => ({
+    ...item,
+    abnormalReason: undefined,
+  }));
+  const nextReceivingDetails: OrderFulfillmentItem[] = receivingDetails.map((item) => ({
+    ...item,
+    abnormalReason: undefined,
+  }));
+
+  let isAbnormal = false;
+
+  nextReceivingDetails.forEach((receivingItem) => {
+    const shipmentItem = shipmentByCode.get(receivingItem.productCode);
+    const reasons: string[] = [];
+
+    if (!shipmentItem) {
+      reasons.push("收货商品异常");
+    } else {
+      if (receivingItem.batchNo !== shipmentItem.batchNo) {
+        reasons.push("收货批次异常");
+      }
+      if (receivingItem.quantity !== shipmentItem.quantity) {
+        reasons.push("收货数量异常");
+      }
+    }
+
+    if (reasons.length > 0) {
+      isAbnormal = true;
+      const mergedReason = Array.from(new Set(reasons)).join("；");
+      receivingItem.abnormalReason = mergedReason;
+
+      const shipmentIndex = shipmentItem
+        ? nextShipmentDetails.findIndex((item) => item.productCode === shipmentItem.productCode)
+        : -1;
+
+      if (shipmentIndex >= 0) {
+        nextShipmentDetails[shipmentIndex] = {
+          ...nextShipmentDetails[shipmentIndex],
+          abnormalReason: mergedReason,
+        };
+      }
+    }
+  });
+
+  return {
+    isAbnormal,
+    shipmentDetails: nextShipmentDetails,
+    receivingDetails: nextReceivingDetails,
+  };
 }
 
 export async function listEDistributionOrders() {
@@ -464,16 +569,16 @@ export async function submitOrderReceipt(payload: SubmitReceiptPayload) {
     throw new Error("当前订单不能提交收货。");
   }
 
+  const draftReceivingDetails = buildReceiptDraftDetails(current, payload.remark);
+  const comparison = compareReceiptDetails(current.shipmentDetails ?? [], draftReceivingDetails);
+
   const nextRecord = appendHistory(
     {
       ...current,
-      status: "收货待确认",
-      receivingDetails: current.shipmentDetails?.length
-        ? current.shipmentDetails.map((item, index) => ({
-            ...item,
-            id: `${current.id}-receipt-${index + 1}`,
-          }))
-        : buildFulfillmentDetails(current.products, current.id, "receipt"),
+      status: comparison.isAbnormal ? "收货异常待确认" : "收货待确认",
+      isAbnormal: comparison.isAbnormal,
+      shipmentDetails: comparison.shipmentDetails,
+      receivingDetails: comparison.receivingDetails,
       receipt: {
         receiptDetails: payload.receiptDetails,
         receiptDocumentNo: payload.receiptDocumentNo,
@@ -513,6 +618,35 @@ export async function reviewOrderReceipt(payload: ReviewOrderPayload) {
       type: "新建订单",
       nodeName: "服务商确认收货",
       role: "服务商",
+      account: payload.account,
+      actorName: payload.actorName,
+      decision: payload.decision === "approve" ? "确认收货" : "驳回收货",
+      remark: payload.remark,
+    },
+  );
+
+  upsertRecord(nextRecord);
+  return nextRecord;
+}
+
+export async function reviewAbnormalOrderReceipt(payload: ReviewOrderPayload) {
+  await new Promise((resolve) => window.setTimeout(resolve, 220));
+  const current = await getEDistributionOrderById(payload.id);
+
+  if (!current || current.status !== "收货异常待确认") {
+    throw new Error("当前订单不在待异常确认状态。");
+  }
+
+  const nextStatus: EDistributionOrderStatus = payload.decision === "approve" ? "已完成" : "收货待重新提交";
+  const nextRecord = appendHistory(
+    {
+      ...current,
+      status: nextStatus,
+    },
+    {
+      type: "新建订单",
+      nodeName: "管理端异常确认",
+      role: "管理员",
       account: payload.account,
       actorName: payload.actorName,
       decision: payload.decision === "approve" ? "确认收货" : "驳回收货",

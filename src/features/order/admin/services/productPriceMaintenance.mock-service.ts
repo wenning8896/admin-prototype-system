@@ -1,10 +1,12 @@
 import dayjs from "dayjs";
 import { utils, writeFileXLSX } from "xlsx";
-import type { PurchasePriceRecord, SalePriceRecord } from "../mocks/productPriceMaintenance.mock";
-import { purchasePriceSeedRecords, salePriceSeedRecords } from "../mocks/productPriceMaintenance.mock";
+import type { ProductBuNameCn, PurchasePriceRecord, SalePriceRecord } from "../mocks/productPriceMaintenance.mock";
+import { productBuOptions, purchasePriceSeedRecords, salePriceSeedRecords } from "../mocks/productPriceMaintenance.mock";
 
 const PURCHASE_STORAGE_KEY = "csl-order-admin-purchase-prices";
 const SALE_STORAGE_KEY = "csl-order-admin-sale-prices";
+const PURCHASE_DELETED_KEY = "csl-order-admin-purchase-prices-deleted";
+const SALE_DELETED_KEY = "csl-order-admin-sale-prices-deleted";
 
 export type PurchasePriceFilters = {
   keyword?: string;
@@ -19,6 +21,7 @@ export type SalePriceFilters = {
 export type SavePurchasePricePayload = {
   id?: string;
   productCode: string;
+  productBu: ProductBuNameCn;
   productName: string;
   imageUrl?: string;
   serviceProviderPurchasePrice: number;
@@ -85,9 +88,37 @@ function persistStoredSalePrices(records: SalePriceRecord[]) {
   window.localStorage.setItem(SALE_STORAGE_KEY, JSON.stringify(records));
 }
 
+function readDeletedIds(key: string) {
+  if (typeof window === "undefined") {
+    return [];
+  }
+
+  const raw = window.localStorage.getItem(key);
+
+  if (!raw) {
+    return [];
+  }
+
+  try {
+    return JSON.parse(raw) as string[];
+  } catch {
+    window.localStorage.removeItem(key);
+    return [];
+  }
+}
+
+function persistDeletedIds(key: string, ids: string[]) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.localStorage.setItem(key, JSON.stringify(Array.from(new Set(ids))));
+}
+
 function getMergedPurchasePrices() {
   const stored = readStoredPurchasePrices();
-  const merged = [...purchasePriceSeedRecords];
+  const deletedIds = readDeletedIds(PURCHASE_DELETED_KEY);
+  const merged = [...purchasePriceSeedRecords].filter((item) => !deletedIds.includes(item.id));
 
   stored.forEach((item) => {
     const index = merged.findIndex((record) => record.id === item.id);
@@ -104,7 +135,8 @@ function getMergedPurchasePrices() {
 
 function getMergedSalePrices() {
   const stored = readStoredSalePrices();
-  const merged = [...salePriceSeedRecords];
+  const deletedIds = readDeletedIds(SALE_DELETED_KEY);
+  const merged = [...salePriceSeedRecords].filter((item) => !deletedIds.includes(item.id));
 
   stored.forEach((item) => {
     const index = merged.findIndex((record) => record.id === item.id);
@@ -130,6 +162,10 @@ function buildProductImage(productName: string, productCode: string) {
   };
 }
 
+function normalizeProductBu(value: string): ProductBuNameCn {
+  return productBuOptions.find((item) => item.value === value.trim())?.value ?? "奶品";
+}
+
 export async function listPurchasePrices(filters: PurchasePriceFilters = {}) {
   await new Promise((resolve) => window.setTimeout(resolve, 220));
 
@@ -142,7 +178,8 @@ export async function listPurchasePrices(filters: PurchasePriceFilters = {}) {
 
     return (
       item.productCode.toLowerCase().includes(keyword) ||
-      item.productName.toLowerCase().includes(keyword)
+      item.productName.toLowerCase().includes(keyword) ||
+      item.productBu.toLowerCase().includes(keyword)
     );
   });
 }
@@ -158,7 +195,8 @@ export async function listSalePrices(filters: SalePriceFilters = {}) {
     const matchesKeyword =
       !keyword ||
       item.productCode.toLowerCase().includes(keyword) ||
-      item.productName.toLowerCase().includes(keyword);
+      item.productName.toLowerCase().includes(keyword) ||
+      item.productBu.toLowerCase().includes(keyword);
     const matchesProviderCode = !providerCode || item.serviceProviderCode.toLowerCase().includes(providerCode);
     const matchesProviderName = !providerName || item.serviceProviderName.toLowerCase().includes(providerName);
 
@@ -176,6 +214,7 @@ export async function savePurchasePrice(payload: SavePurchasePricePayload) {
   const nextRecord: PurchasePriceRecord = {
     id: payload.id ?? `purchase-price-${Date.now()}`,
     productCode: existingRecord?.productCode ?? payload.productCode.trim(),
+    productBu: normalizeProductBu(payload.productBu),
     productName: payload.productName.trim(),
     imageUrl: payload.imageUrl ?? existingRecord?.imageUrl,
     imageLabel: imageMeta.imageLabel,
@@ -201,6 +240,30 @@ export async function savePurchasePrice(payload: SavePurchasePricePayload) {
 
   persistStoredPurchasePrices([nextRecord, ...stored]);
   return nextRecord;
+}
+
+export async function deletePurchasePrice(id: string) {
+  await new Promise((resolve) => window.setTimeout(resolve, 220));
+
+  const target = getMergedPurchasePrices().find((item) => item.id === id);
+
+  if (!target) {
+    throw new Error("未找到对应的产品记录。");
+  }
+
+  persistStoredPurchasePrices(readStoredPurchasePrices().filter((item) => item.id !== id));
+  persistDeletedIds(PURCHASE_DELETED_KEY, [...readDeletedIds(PURCHASE_DELETED_KEY), id]);
+
+  const relatedSaleIds = getMergedSalePrices()
+    .filter((item) => item.productCode === target.productCode)
+    .map((item) => item.id);
+
+  if (relatedSaleIds.length > 0) {
+    persistStoredSalePrices(readStoredSalePrices().filter((item) => !relatedSaleIds.includes(item.id)));
+    persistDeletedIds(SALE_DELETED_KEY, [...readDeletedIds(SALE_DELETED_KEY), ...relatedSaleIds]);
+  }
+
+  return `${target.productName} 已删除。`;
 }
 
 export async function pushPurchasePricesToErp(records: PurchasePriceRecord[]) {
@@ -250,6 +313,7 @@ export function exportSalePrices(records: SalePriceRecord[]) {
   const worksheet = utils.json_to_sheet(
     records.map((item) => ({
       产品编码: item.productCode,
+      产品BU: item.productBu,
       产品名称: item.productName,
       服务商进货价: item.serviceProviderPurchasePrice,
       "服务商出货价（好货）": item.goodPrice,
