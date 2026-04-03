@@ -22,6 +22,15 @@ export type OrderProductItem = {
   amount: number;
 };
 
+export type OrderFulfillmentItem = {
+  id: string;
+  productCode: string;
+  productName: string;
+  healthType: ProductHealthType;
+  batchNo: string;
+  quantity: number;
+};
+
 export type OrderReceiptInfo = {
   receiptDetails?: string;
   receiptDocumentNo?: string;
@@ -69,6 +78,7 @@ export type EDistributionOrderRecord = {
   consigneeDistrict: string;
   consigneeAddress: string;
   consigneePostalCode: string;
+  paymentProof?: string;
   createdAt: string;
   status: EDistributionOrderStatus;
   currentApprovalType?: ApprovalType;
@@ -76,6 +86,8 @@ export type EDistributionOrderRecord = {
   approvalStep?: number;
   shipmentNo?: string;
   shippedAt?: string;
+  shipmentDetails?: OrderFulfillmentItem[];
+  receivingDetails?: OrderFulfillmentItem[];
   cancelReason?: string;
   receipt?: OrderReceiptInfo;
   approvalHistory: OrderApprovalHistory[];
@@ -124,6 +136,7 @@ export const eDistributionOrderSeedRecords: EDistributionOrderRecord[] = [
     consigneeDistrict: "工业园区",
     consigneeAddress: "星湖街 88 号 3 幢 201 室",
     consigneePostalCode: "215021",
+    paymentProof: "付款证明_EOD20260314001.pdf",
     createdAt: "2026-03-14 09:10",
     status: "待审批",
     currentApprovalType: "新建订单",
@@ -174,8 +187,10 @@ export const eDistributionOrderSeedRecords: EDistributionOrderRecord[] = [
     consigneeDistrict: "浦东新区",
     consigneeAddress: "张江路 166 号",
     consigneePostalCode: "201203",
+    paymentProof: "付款证明_EOD20260313007.pdf",
     createdAt: "2026-03-13 15:20",
     status: "待发货",
+    shipmentDetails: [],
     approvalHistory: [
       {
         id: "history-002",
@@ -264,10 +279,22 @@ export const eDistributionOrderSeedRecords: EDistributionOrderRecord[] = [
     consigneeDistrict: "天河区",
     consigneeAddress: "体育东路 28 号",
     consigneePostalCode: "510620",
+    paymentProof: "付款证明_EOD20260312005.pdf",
     createdAt: "2026-03-12 10:05",
     status: "待收货",
     shipmentNo: "SHIP2026031201",
     shippedAt: "2026-03-12 17:20",
+    shipmentDetails: [
+      {
+        id: "ship-item-001",
+        productCode: "SKU-10003",
+        productName: "经典 RTD 饮品",
+        healthType: "过三",
+        batchNo: "RTD260312A",
+        quantity: 60,
+      },
+    ],
+    receivingDetails: [],
     approvalHistory: [],
   },
   {
@@ -300,10 +327,31 @@ export const eDistributionOrderSeedRecords: EDistributionOrderRecord[] = [
     consigneeDistrict: "浦东新区",
     consigneeAddress: "盛夏路 56 号",
     consigneePostalCode: "201203",
+    paymentProof: "付款证明_EOD20260311003.pdf",
     createdAt: "2026-03-11 09:18",
     status: "收货待确认",
     shipmentNo: "SHIP2026031103",
     shippedAt: "2026-03-11 15:30",
+    shipmentDetails: [
+      {
+        id: "ship-item-002",
+        productCode: "SKU-10001",
+        productName: "金装奶品 250ml",
+        healthType: "好货",
+        batchNo: "MILK260311B",
+        quantity: 100,
+      },
+    ],
+    receivingDetails: [
+      {
+        id: "receive-item-001",
+        productCode: "SKU-10001",
+        productName: "金装奶品 250ml",
+        healthType: "好货",
+        batchNo: "MILK260311B",
+        quantity: 100,
+      },
+    ],
     receipt: {
       receiptDetails: "已到货 100 件，外箱完好。",
       receiptDocumentNo: "RCV2026031101",
@@ -341,10 +389,31 @@ export const eDistributionOrderSeedRecords: EDistributionOrderRecord[] = [
     consigneeDistrict: "工业园区",
     consigneeAddress: "星湖街 88 号 3 幢 201 室",
     consigneePostalCode: "215021",
+    paymentProof: "付款证明_EOD20260310002.pdf",
     createdAt: "2026-03-10 13:10",
     status: "收货待重新提交",
     shipmentNo: "SHIP2026031002",
     shippedAt: "2026-03-10 18:10",
+    shipmentDetails: [
+      {
+        id: "ship-item-003",
+        productCode: "SKU-10002",
+        productName: "即饮咖啡 300ml",
+        healthType: "过半",
+        batchNo: "COF260310C",
+        quantity: 40,
+      },
+    ],
+    receivingDetails: [
+      {
+        id: "receive-item-002",
+        productCode: "SKU-10002",
+        productName: "即饮咖啡 300ml",
+        healthType: "过半",
+        batchNo: "COF260310C",
+        quantity: 40,
+      },
+    ],
     receipt: {
       receiptDetails: "签收单缺失页码，请重新提交。",
       receiptDocumentNo: "RCV2026031002",
@@ -382,10 +451,31 @@ export const eDistributionOrderSeedRecords: EDistributionOrderRecord[] = [
     consigneeDistrict: "浦东新区",
     consigneeAddress: "张江路 166 号",
     consigneePostalCode: "201203",
+    paymentProof: "付款证明_EOD20260309001.pdf",
     createdAt: "2026-03-09 11:30",
     status: "已完成",
     shipmentNo: "SHIP2026030901",
     shippedAt: "2026-03-09 16:00",
+    shipmentDetails: [
+      {
+        id: "ship-item-004",
+        productCode: "SKU-10003",
+        productName: "经典 RTD 饮品",
+        healthType: "过三",
+        batchNo: "RTD260309D",
+        quantity: 50,
+      },
+    ],
+    receivingDetails: [
+      {
+        id: "receive-item-003",
+        productCode: "SKU-10003",
+        productName: "经典 RTD 饮品",
+        healthType: "过三",
+        batchNo: "RTD260309D",
+        quantity: 50,
+      },
+    ],
     receipt: {
       receiptDetails: "签收完成，明细一致。",
       receiptDocumentNo: "RCV2026030901",

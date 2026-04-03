@@ -4,7 +4,12 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import type { UploadFile, UploadProps } from "antd";
 import { useAuth } from "../../../../auth/useAuth";
-import type { EDistributionOrderRecord, EDistributionOrderStatus, OrderProductItem } from "../../shared/mocks/eDistributionOrderFlow.mock";
+import type {
+  EDistributionOrderRecord,
+  EDistributionOrderStatus,
+  OrderFulfillmentItem,
+  OrderProductItem,
+} from "../../shared/mocks/eDistributionOrderFlow.mock";
 import { getEDistributionOrderById, reviewDistributorCancellation, submitOrderReceipt } from "../../shared/services/eDistributionOrderFlow.mock-service";
 
 const statusColorMap: Record<EDistributionOrderStatus, string> = {
@@ -132,6 +137,14 @@ export function DistributorPlatformOrderDetailPage() {
     { title: "金额", dataIndex: "amount", width: 120, render: (value: number) => `¥ ${value.toFixed(2)}` },
   ];
 
+  const fulfillmentColumns: ColumnsType<OrderFulfillmentItem> = [
+    { title: "产品编码", dataIndex: "productCode", width: 150 },
+    { title: "产品名称", dataIndex: "productName", width: 220 },
+    { title: "效期类型", dataIndex: "healthType", width: 140 },
+    { title: "批次号", dataIndex: "batchNo", width: 180 },
+    { title: "数量", dataIndex: "quantity", width: 100 },
+  ];
+
   return (
     <Space direction="vertical" size={16} className="page-stack">
       <Card className="page-card">
@@ -188,6 +201,15 @@ export function DistributorPlatformOrderDetailPage() {
         ) : null}
       </Card>
 
+      <Card className="page-card" title="付款信息">
+        {record ? (
+          <Descriptions column={2} size="small">
+            <Descriptions.Item label="付款证明">{renderDownloadLink(record.paymentProof)}</Descriptions.Item>
+            <Descriptions.Item label="付款备注">-</Descriptions.Item>
+          </Descriptions>
+        ) : null}
+      </Card>
+
       <Card className="page-card" title="服务商信息">
         {record ? (
           <Descriptions column={2} size="small">
@@ -221,10 +243,18 @@ export function DistributorPlatformOrderDetailPage() {
             <Descriptions.Item label="详细地址" span={2}>
               {record.consigneeAddress}
             </Descriptions.Item>
+          </Descriptions>
+        ) : null}
+      </Card>
+
+      <Card className="page-card" title="收货信息">
+        {record ? (
+          <Descriptions column={2} size="small">
+            <Descriptions.Item label="发货时间">{record.shippedAt ?? "-"}</Descriptions.Item>
+            <Descriptions.Item label="签收提交时间">{record.receipt?.submittedAt ?? "-"}</Descriptions.Item>
             {record.receipt ? (
               <>
                 <Descriptions.Item label="签收单附件">{renderDownloadLink(record.receipt.receiptDocumentNo)}</Descriptions.Item>
-                <Descriptions.Item label="提交时间">{record.receipt.submittedAt}</Descriptions.Item>
                 <Descriptions.Item label="收货明细附件" span={2}>
                   {renderDownloadLink(record.receipt.receiptDetails)}
                 </Descriptions.Item>
@@ -232,6 +262,32 @@ export function DistributorPlatformOrderDetailPage() {
             ) : null}
           </Descriptions>
         ) : null}
+      </Card>
+
+      <Card className="page-card" title="发货明细">
+        <Table
+          rowKey="id"
+          loading={loading}
+          dataSource={record?.shipmentDetails ?? []}
+          columns={fulfillmentColumns}
+          tableLayout="fixed"
+          pagination={false}
+          locale={{ emptyText: "暂无发货明细" }}
+          scroll={{ x: 920 }}
+        />
+      </Card>
+
+      <Card className="page-card" title="收货明细">
+        <Table
+          rowKey="id"
+          loading={loading}
+          dataSource={record?.receivingDetails ?? []}
+          columns={fulfillmentColumns}
+          tableLayout="fixed"
+          pagination={false}
+          locale={{ emptyText: "暂无收货明细" }}
+          scroll={{ x: 920 }}
+        />
       </Card>
 
       <Modal

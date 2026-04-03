@@ -33,6 +33,7 @@ type OrderItemForm = {
 type OrderFormValues = {
   platformCode: string;
   consigneeId: string;
+  paymentProof: UploadFile[];
   products: OrderItemForm[];
 };
 
@@ -209,6 +210,7 @@ export function DistributorPlatformOrderListPage() {
         consigneeDistrict: address.district,
         consigneeAddress: address.detailAddress,
         consigneePostalCode: address.postalCode,
+        paymentProof: values.paymentProof?.[0]?.name ?? "",
         account: user?.account ?? "distributor",
         actorName: user?.name ?? "分销商用户",
       });
@@ -461,6 +463,7 @@ export function DistributorPlatformOrderListPage() {
             orderForm.setFieldsValue({
               platformCode: undefined,
               consigneeId: undefined,
+              paymentProof: [],
               products: [{ productCode: undefined, healthType: "好货", quantity: 1 }],
             });
             setCreateOpen(true);
@@ -497,6 +500,21 @@ export function DistributorPlatformOrderListPage() {
           <Card className="page-card" title="平台信息">
             <Form.Item name="platformCode" label="平台" rules={[{ required: true, message: "请选择平台" }]} style={{ marginBottom: 0 }}>
               <Select placeholder="请选择平台" options={platformOptions} />
+            </Form.Item>
+          </Card>
+
+          <Card className="page-card" title="付款信息" style={{ marginTop: 16 }}>
+            <Form.Item
+              name="paymentProof"
+              label="付款证明"
+              valuePropName="fileList"
+              getValueFromEvent={(event) => event?.fileList ?? []}
+              rules={[{ required: true, message: "请上传付款证明附件" }]}
+              style={{ marginBottom: 0 }}
+            >
+              <Upload {...uploadProps}>
+                <Button>上传附件</Button>
+              </Upload>
             </Form.Item>
           </Card>
 

@@ -4,6 +4,7 @@ import {
   eDistributionOrderSeedRecords,
   type EDistributionOrderRecord,
   type EDistributionOrderStatus,
+  type OrderFulfillmentItem,
   type OrderApprovalHistory,
   type OrderProductItem,
   type ProductHealthType,
@@ -33,6 +34,7 @@ export type CreateOrderPayload = {
   consigneeDistrict: string;
   consigneeAddress: string;
   consigneePostalCode: string;
+  paymentProof: string;
   account: string;
   actorName: string;
 };
@@ -197,6 +199,17 @@ function toOrderItems(
   }));
 }
 
+function buildFulfillmentDetails(products: OrderProductItem[], recordId: string, type: "shipment" | "receipt"): OrderFulfillmentItem[] {
+  return products.map((item, index) => ({
+    id: `${recordId}-${type}-${index + 1}`,
+    productCode: item.productCode,
+    productName: item.productName,
+    healthType: item.healthType,
+    batchNo: `${item.productCode.replace(/[^A-Z0-9]/g, "")}${dayjs().format("YYMMDD")}${String(index + 1).padStart(2, "0")}`,
+    quantity: item.quantity,
+  }));
+}
+
 export async function listEDistributionOrders() {
   await new Promise((resolve) => window.setTimeout(resolve, 220));
   return getMergedRecords();
@@ -235,6 +248,7 @@ export async function createEDistributionOrder(payload: CreateOrderPayload) {
     consigneeDistrict: payload.consigneeDistrict,
     consigneeAddress: payload.consigneeAddress,
     consigneePostalCode: payload.consigneePostalCode,
+    paymentProof: payload.paymentProof,
     createdAt: dayjs().format("YYYY-MM-DD HH:mm"),
     status: "待审批",
     currentApprovalType: "新建订单",
@@ -425,6 +439,7 @@ export async function shipEDistributionOrder(payload: ShipOrderPayload) {
       status: payload.shipmentType === "full" ? "待收货" : "待发货",
       shipmentNo: payload.shipmentType === "partial" ? "部分发货（第三方同步）" : "全部发货完成",
       shippedAt: dayjs().format("YYYY-MM-DD HH:mm"),
+      shipmentDetails: buildFulfillmentDetails(current.products, current.id, "shipment"),
     },
     {
       type: "新建订单",
@@ -453,6 +468,12 @@ export async function submitOrderReceipt(payload: SubmitReceiptPayload) {
     {
       ...current,
       status: "收货待确认",
+      receivingDetails: current.shipmentDetails?.length
+        ? current.shipmentDetails.map((item, index) => ({
+            ...item,
+            id: `${current.id}-receipt-${index + 1}`,
+          }))
+        : buildFulfillmentDetails(current.products, current.id, "receipt"),
       receipt: {
         receiptDetails: payload.receiptDetails,
         receiptDocumentNo: payload.receiptDocumentNo,
