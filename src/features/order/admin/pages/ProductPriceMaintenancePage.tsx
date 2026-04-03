@@ -8,6 +8,7 @@ import {
   Input,
   InputNumber,
   Modal,
+  Select,
   Space,
   Table,
   Tabs,
@@ -18,8 +19,9 @@ import type { ColumnsType } from "antd/es/table";
 import type { UploadFile } from "antd/es/upload/interface";
 import { useEffect, useMemo, useState } from "react";
 import { FilterPanel } from "../../../../app/components/FilterPanel";
-import type { PurchasePriceRecord, SalePriceRecord } from "../mocks/productPriceMaintenance.mock";
+import { productBuOptions, type ProductBuNameCn, type PurchasePriceRecord, type SalePriceRecord } from "../mocks/productPriceMaintenance.mock";
 import {
+  deletePurchasePrice,
   listPurchasePrices,
   listSalePrices,
   pushPurchasePricesToErp,
@@ -32,6 +34,7 @@ type PriceTab = "purchase" | "sale";
 
 type PurchasePriceFormValues = {
   productCode?: string;
+  productBu: ProductBuNameCn;
   productName: string;
   imageUrl?: string;
   serviceProviderPurchasePrice: number;
@@ -52,7 +55,7 @@ export function ProductPriceMaintenancePage() {
   const [purchaseFilterForm] = Form.useForm<PurchasePriceFilters>();
   const [saleFilterForm] = Form.useForm<SalePriceFilters>();
   const [editorForm] = Form.useForm<PurchasePriceFormValues>();
-  const { message } = App.useApp();
+  const { message, modal } = App.useApp();
   const [activeTab, setActiveTab] = useState<PriceTab>("purchase");
   const [purchaseLoading, setPurchaseLoading] = useState(true);
   const [saleLoading, setSaleLoading] = useState(true);
@@ -100,6 +103,7 @@ export function ProductPriceMaintenancePage() {
     setEditingRecord(null);
     editorForm.setFieldsValue({
       productCode: "",
+      productBu: undefined,
       productName: "",
       imageUrl: undefined,
       serviceProviderPurchasePrice: undefined,
@@ -112,6 +116,7 @@ export function ProductPriceMaintenancePage() {
     setEditingRecord(record);
     editorForm.setFieldsValue({
       productCode: record.productCode,
+      productBu: record.productBu,
       productName: record.productName,
       imageUrl: record.imageUrl,
       serviceProviderPurchasePrice: record.serviceProviderPurchasePrice,
@@ -127,6 +132,7 @@ export function ProductPriceMaintenancePage() {
       await savePurchasePrice({
         id: editingRecord?.id,
         productCode: values.productCode ?? "",
+        productBu: values.productBu,
         productName: values.productName,
         imageUrl: values.imageUrl,
         serviceProviderPurchasePrice: values.serviceProviderPurchasePrice,
@@ -147,8 +153,25 @@ export function ProductPriceMaintenancePage() {
     void message.success(result);
   }
 
+  async function handleDelete(record: PurchasePriceRecord) {
+    modal.confirm({
+      title: "确认删除该产品？",
+      content: `删除后，产品 ${record.productName} 的进货价及关联出货价展示将一并移除。`,
+      okText: "确认删除",
+      cancelText: "取消",
+      okButtonProps: { danger: true },
+      onOk: async () => {
+        const result = await deletePurchasePrice(record.id);
+        void message.success(result);
+        await loadPurchaseData(purchaseFilterForm.getFieldsValue());
+        await loadSaleData(saleFilterForm.getFieldsValue());
+      },
+    });
+  }
+
   const purchaseColumns: ColumnsType<PurchasePriceRecord> = [
     { title: "产品编码", dataIndex: "productCode", width: 160 },
+    { title: "产品BU", dataIndex: "productBu", width: 160 },
     { title: "产品名称", dataIndex: "productName", width: 240 },
     {
       title: "产品图片",
@@ -174,11 +197,16 @@ export function ProductPriceMaintenancePage() {
       title: "操作",
       key: "actions",
       fixed: "right",
-      width: 140,
+      width: 180,
       render: (_, record) => (
-        <Button type="link" onClick={() => openEditModal(record)}>
-          编辑产品
-        </Button>
+        <Space size={0}>
+          <Button type="link" onClick={() => openEditModal(record)}>
+            编辑产品
+          </Button>
+          <Button danger type="link" onClick={() => void handleDelete(record)}>
+            删除
+          </Button>
+        </Space>
       ),
     },
   ];
@@ -187,6 +215,7 @@ export function ProductPriceMaintenancePage() {
     { title: "服务商编码", dataIndex: "serviceProviderCode", width: 140 },
     { title: "服务商名称", dataIndex: "serviceProviderName", width: 180 },
     { title: "产品编码", dataIndex: "productCode", width: 150 },
+    { title: "产品BU", dataIndex: "productBu", width: 160 },
     { title: "产品名称", dataIndex: "productName", width: 220 },
     {
       title: "服务商进货价",
@@ -333,7 +362,7 @@ export function ProductPriceMaintenancePage() {
               dataSource={purchaseItems}
               columns={purchaseColumns}
               tableLayout="fixed"
-              scroll={{ x: 980 }}
+              scroll={{ x: 1140 }}
               pagination={{ pageSize: 8, showSizeChanger: true, showTotal: (total) => `共 ${total} 条` }}
             />
           </>
@@ -377,6 +406,12 @@ export function ProductPriceMaintenancePage() {
             rules={[{ required: !editingRecord, message: "请输入产品编码" }]}
           >
             <Input placeholder="请输入产品编码" disabled={Boolean(editingRecord)} />
+          </Form.Item>
+          <Form.Item name="productBu" label="产品BU" rules={[{ required: true, message: "请选择产品BU" }]}>
+            <Select
+              placeholder="请选择产品BU"
+              options={productBuOptions.map((item) => ({ value: item.value, label: item.label }))}
+            />
           </Form.Item>
           <Form.Item name="productName" label="产品名称" rules={[{ required: true, message: "请输入产品名称" }]}>
             <Input placeholder="请输入产品名称" />
@@ -444,6 +479,7 @@ export function ProductPriceMaintenancePage() {
             <Descriptions.Item label="服务商编码">{viewingSaleRecord.serviceProviderCode}</Descriptions.Item>
             <Descriptions.Item label="服务商名称">{viewingSaleRecord.serviceProviderName}</Descriptions.Item>
             <Descriptions.Item label="产品编码">{viewingSaleRecord.productCode}</Descriptions.Item>
+            <Descriptions.Item label="产品BU">{viewingSaleRecord.productBu}</Descriptions.Item>
             <Descriptions.Item label="产品名称">{viewingSaleRecord.productName}</Descriptions.Item>
             <Descriptions.Item label="服务商进货价">
               ¥ {viewingSaleRecord.serviceProviderPurchasePrice.toFixed(2)}

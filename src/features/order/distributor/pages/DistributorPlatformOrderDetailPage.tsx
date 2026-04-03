@@ -17,6 +17,7 @@ const statusColorMap: Record<EDistributionOrderStatus, string> = {
   待发货: "gold",
   待收货: "blue",
   收货待确认: "cyan",
+  收货异常待确认: "magenta",
   收货待重新提交: "warning",
   已完成: "success",
   取消确认中: "orange",
@@ -137,12 +138,22 @@ export function DistributorPlatformOrderDetailPage() {
     { title: "金额", dataIndex: "amount", width: 120, render: (value: number) => `¥ ${value.toFixed(2)}` },
   ];
 
-  const fulfillmentColumns: ColumnsType<OrderFulfillmentItem> = [
+  const shipmentColumns: ColumnsType<OrderFulfillmentItem> = [
     { title: "产品编码", dataIndex: "productCode", width: 150 },
     { title: "产品名称", dataIndex: "productName", width: 220 },
     { title: "效期类型", dataIndex: "healthType", width: 140 },
     { title: "批次号", dataIndex: "batchNo", width: 180 },
     { title: "数量", dataIndex: "quantity", width: 100 },
+    { title: "异常原因", dataIndex: "abnormalReason", width: 280, render: (value?: string) => value || "-" },
+  ];
+
+  const receivingColumns: ColumnsType<OrderFulfillmentItem> = [
+    { title: "产品编码", dataIndex: "productCode", width: 150 },
+    { title: "产品名称", dataIndex: "productName", width: 220 },
+    { title: "效期类型", dataIndex: "healthType", width: 140 },
+    { title: "批次号", dataIndex: "batchNo", width: 180 },
+    { title: "数量", dataIndex: "quantity", width: 100 },
+    { title: "异常原因", dataIndex: "abnormalReason", width: 280, render: (value?: string) => value || "-" },
   ];
 
   return (
@@ -197,15 +208,15 @@ export function DistributorPlatformOrderDetailPage() {
             <Descriptions.Item label="订单状态">
               <Tag color={statusColorMap[record.status]}>{record.status}</Tag>
             </Descriptions.Item>
+            <Descriptions.Item label="是否异常">{record.isAbnormal ? "是" : "否"}</Descriptions.Item>
           </Descriptions>
         ) : null}
       </Card>
 
       <Card className="page-card" title="付款信息">
         {record ? (
-          <Descriptions column={2} size="small">
+          <Descriptions column={1} size="small">
             <Descriptions.Item label="付款证明">{renderDownloadLink(record.paymentProof)}</Descriptions.Item>
-            <Descriptions.Item label="付款备注">-</Descriptions.Item>
           </Descriptions>
         ) : null}
       </Card>
@@ -227,7 +238,7 @@ export function DistributorPlatformOrderDetailPage() {
           columns={productColumns}
           tableLayout="fixed"
           pagination={false}
-          scroll={{ x: 920 }}
+          scroll={{ x: 1220 }}
         />
       </Card>
 
@@ -252,14 +263,10 @@ export function DistributorPlatformOrderDetailPage() {
           <Descriptions column={2} size="small">
             <Descriptions.Item label="发货时间">{record.shippedAt ?? "-"}</Descriptions.Item>
             <Descriptions.Item label="签收提交时间">{record.receipt?.submittedAt ?? "-"}</Descriptions.Item>
-            {record.receipt ? (
-              <>
-                <Descriptions.Item label="签收单附件">{renderDownloadLink(record.receipt.receiptDocumentNo)}</Descriptions.Item>
-                <Descriptions.Item label="收货明细附件" span={2}>
-                  {renderDownloadLink(record.receipt.receiptDetails)}
-                </Descriptions.Item>
-              </>
-            ) : null}
+            <Descriptions.Item label="签收单附件">{renderDownloadLink(record.receipt?.receiptDocumentNo)}</Descriptions.Item>
+            <Descriptions.Item label="收货明细附件" span={2}>
+              {renderDownloadLink(record.receipt?.receiptDetails)}
+            </Descriptions.Item>
           </Descriptions>
         ) : null}
       </Card>
@@ -269,11 +276,11 @@ export function DistributorPlatformOrderDetailPage() {
           rowKey="id"
           loading={loading}
           dataSource={record?.shipmentDetails ?? []}
-          columns={fulfillmentColumns}
+          columns={shipmentColumns}
           tableLayout="fixed"
           pagination={false}
           locale={{ emptyText: "暂无发货明细" }}
-          scroll={{ x: 920 }}
+          scroll={{ x: 1220 }}
         />
       </Card>
 
@@ -282,11 +289,11 @@ export function DistributorPlatformOrderDetailPage() {
           rowKey="id"
           loading={loading}
           dataSource={record?.receivingDetails ?? []}
-          columns={fulfillmentColumns}
+          columns={receivingColumns}
           tableLayout="fixed"
           pagination={false}
           locale={{ emptyText: "暂无收货明细" }}
-          scroll={{ x: 920 }}
+          scroll={{ x: 1220 }}
         />
       </Card>
 
